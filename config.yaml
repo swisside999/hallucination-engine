@@ -1,0 +1,154 @@
+# HALLUCINATION ENGINE - all tunable parameters.
+# The three knobs that matter most:
+#   diffusion.strength_base  - trip intensity (0.25 frozen .. 0.65 dissolving)
+#   display.trail_base       - smear amount
+#   scenes.phrase_bars       - scene pacing
+
+audio:
+  samplerate: 44100
+  blocksize: 512
+  fft_size: 2048
+  device: null                # input device index for live mode (or use --device)
+  bands:                      # Hz ranges
+    kick: [20, 120]
+    perc: [2000, 8000]        # spectral flux band
+    synth: [250, 2500]
+    air: [8000, 16000]
+  normalizer:
+    decay: 0.999              # rolling-max decay per analysis frame
+    floor: 1.0e-6
+  envelopes:                  # attack/release smoothing per band
+    kick:  {attack_ms: 5,  release_ms: 120}
+    perc:  {attack_ms: 2,  release_ms: 60}
+    synth: {attack_ms: 80, release_ms: 400}
+    air:   {attack_ms: 20, release_ms: 200}
+  onset:
+    history_seconds: 1.5
+    k: 1.5                    # threshold = mean + k * std
+    min_level: 0.35           # kick must also be loud in absolute normalized terms
+    refractory_ms: 250
+  big_onset:
+    history_seconds: 1.5
+    k: 3.0
+    refractory_ms: 1500
+
+tempo:
+  min_bpm: 120
+  max_bpm: 150
+  default_bpm: 130
+  bpm_override: null          # set to force a BPM (tap tempo 'T' also overrides)
+  nudge: 0.3                  # phase re-anchor fraction per kick onset
+  onset_history: 24
+
+diffusion:
+  model: stabilityai/sd-turbo
+  resolution: 512             # drop to 448 if diffusion fps < 4
+  steps: 1                    # UNet passes per frame. NOTE: 2 looks better on stills but
+                              # entrenches feedback attractors (refinement preserves the
+                              # incumbent grid/stripe structure) - keep 1 for live use
+  taesd: true                 # tiny VAE: ~3x faster on MPS (false = full SD VAE, slower but finer)
+  strength_base: 0.48         # THE hallucination knob
+  strength_kick: 0.15
+  strength_big: 0.15
+  strength_min: 0.25
+  strength_max: 0.65
+  noise_base: 0.04            # kick noise injection, std in 0-1 image space
+  noise_kick_scale: 0.06
+  noise_idle: 0.03            # per-iteration noise floor (anti-attractor, keeps texture alive)
+  zoom_base: 0.004            # perpetual push-in per frame
+  zoom_perc: 0.012            # percussion accelerates the push
+  rot_lfo_hz: 0.02
+  rot_max_deg: 0.4
+  drift_amount: 1.5           # px of breathing x/y drift
+  swirl_amount: 0.0           # optional polar swirl on phrases where index % 4 == 3;
+                              # >0 imprints spiral geometry into the whole feedback loop -
+                              # try 0.05 if you WANT spiral-tunnel visuals
+  attention_slicing: false    # enable only on low-RAM machines (~15ms/frame cost)
+  servo:
+    luma_target: 0.45
+    sat_target: 0.5
+    rate: 0.02                # correction per frame
+    chroma_rate: 0.01         # gray-world hue balance (anti single-color lock-in)
+  sharpen_amount: 0.10        # unsharp mask vs VAE softening (>0.2 breeds neon halos)
+  phrase_flash:               # one strong re-dream at each phrase boundary
+    enable: true
+    strength: 0.68
+    noise: 0.10
+    guidance: 0.0             # >1 (try 3.0) = CFG scene stamps: each phrase OPENS as a
+                              # prompt-faithful image, at the cost of ~10% more time in
+                              # stripe/grid locks. Off = calmer, more abstract drift.
+  strength_tension: 0.15      # buildup: image crystallizes as tension rises
+  zoom_tension: 0.010         # buildup: push-in accelerates
+  drop:                       # kick returns after a buildup:
+    strength: 0.95            # image explodes and reforms as the next scene
+    noise: 0.30
+    guidance: 3.5             # CFG on the drop frame
+    rampage_strength: 0.62    # strength floor while rampaging after the drop
+    rampage_seconds: 4.0      # rampage window, scaled by drop power (buildup length)
+    rampage_noise: 0.03       # extra per-frame noise during the rampage
+  collapse:
+    luma_min: 0.12
+    luma_max: 0.85
+    sat_min: 0.02               # several scenes are legitimately monochrome
+    sat_max: 0.85               # blown-saturation detector
+    anisotropy_max: 0.32        # stripe-lock detector (healthy frames <= 0.24, locks 0.33+)
+    grid_max: 0.50              # top-2 orientation bins: catches grid/grate locks that
+                                # split energy across two directions (healthy <= 0.41)
+    grace_seconds: 3.0
+    reset_strength: 0.85
+    reset_noise: 0.35
+
+logo:                         # DJ logo pressed into the pre-diffusion frame: the
+  enable: false               # hallucination redraws it in scene texture each frame.
+  path: ""                    # PNG/WebP, white-on-transparent works best (RGB without
+                              # alpha falls back to luma-as-mask, i.e. white-on-black)
+  opacity: 0.80               # legibility overlay after the dream (<1 lets scene
+                              # texture bleed through inside the strokes)
+  seed_opacity: 0.25          # pre-diffusion shape seed (hallucination forms around it)
+  scale: 0.6                  # logo width as fraction of the frame
+  flash_seconds: 2.5          # burst length (auto triggers below fade out over this)
+  drop_chance: 0.8            # burst on THE DROP (strobe volleys ride drops)
+  big_chance: 0.10            # burst on big onsets (single strobe flashes)
+  phrase_chance: 0.10         # random burst at a phrase boundary
+
+scenes:
+  preset: "General Rave"      # prompt preset (presets/*.json, by name or path;
+                              # --preset overrides; null = built-in bank)
+  phrase_bars: 8              # scene length; crossfade over the last 2 bars
+  blend_start: 0.75           # fraction of phrase where the crossfade begins
+  shimmer: 0.15               # synth leans image toward the NEXT scene
+  shuffle: true               # randomized scene order (false = bank order)
+  hybrid_chance: 0.0          # chance a phrase fuses TWO scenes (snakes x goth women).
+                              # Fun but hybrid conditioning is weaker: ~10% more lock
+                              # time. Try 0.15.
+
+tension:                      # buildup/drop detection
+  drought_start: 1.2          # seconds without kick before tension starts rising
+  drought_full: 7.0           # drought length at which tension = 1.0
+  min_rms: 0.30               # only build tension while the music stays loud
+  drop_min_tension: 0.4       # kick returning above this tension = THE DROP
+
+display:
+  width: 1024
+  height: 1024
+  pulse_amount: 0.06          # kick inhale
+  chroma_kick_px: 4.0
+  chroma_big_px: 6.0
+  trail_base: 0.25
+  trail_synth: 0.35
+  trail_decay: 0.94
+  trail_zoom: 1.003
+  strobe_intensity: 0.45
+  enable_strobe: true         # PHOTOSENSITIVITY: set false to disable strobe
+  drop_strobe: 0.65           # strobe burst intensity on the drop
+  drop_strobe_hz: 9           # flash rate of the burst
+  drop_strobe_chance: 0.7     # chance a drop earns an extended strobe volley
+  drop_strobe_seconds: 2.5    # volley length, scaled by drop power
+  chroma_tension_px: 3.0      # chromatic aberration rises with buildup tension
+  hue_rate_deg: 8.0           # max hue rotation deg/s (scaled by air energy)
+  grain_base: 0.03
+  vignette: 0.35
+  beat_breathe: 0.03
+  hud: false                  # overlay in the VISUAL window ('H' toggles); info
+                              # lives in the control window now
+  control_window: true        # second window: info readout + sliders

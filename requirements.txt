@@ -1,0 +1,13 @@
+torch>=2.4
+diffusers>=0.27
+transformers>=4.40
+accelerate>=0.30
+safetensors>=0.4
+numpy>=1.26,<3
+sounddevice>=0.4.6
+soundfile>=0.12.1
+moderngl>=5.10
+glfw>=2.7
+Pillow>=10.3
+PyYAML>=6.0
+scipy>=1.13

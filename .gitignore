@@ -1,0 +1,10 @@
+.venv/
+models/
+captures/
+__pycache__/
+*.pyc
+assets/seed.png
+.DS_Store
+apps/HallucinationEngine/.build/
+apps/HallucinationEngine/dist/
+presets/.thumbs/

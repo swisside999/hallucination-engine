@@ -1,0 +1,10 @@
+# Kowloon offline-render overlay: engine tuning lives IN the preset
+# (presets/kowloon.json "config") - this only turns the logo on for renders.
+# assets/kowloon_logo.png is the brand JPG converted to red-on-transparent
+# (raw JPG's luma-mask fallback would stamp red strokes at only ~38%).
+logo:
+  enable: true
+  path: assets/kowloon_logo.png
+
+scenes:
+  preset: Kowloon

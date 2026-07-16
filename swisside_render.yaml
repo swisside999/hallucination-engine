@@ -1,0 +1,39 @@
+# Swisside "Simmer" reel overlay (General Rave preset).
+# Rendered square then center-cropped to 9:16 - logo scale must stay < 0.5625
+# (the crop keeps only the middle 1080/1920 of the width).
+render:
+  drop_times: [80.4, 190.6]   # from offline structure analysis: kick-gap ends
+
+tempo:
+  bpm_override: 141           # block quantization aliases the median to 139.7
+
+tension:
+  drop_min_tension: 0.9       # mute heuristic drops; scheduled ones own the reel
+
+# anti-lock: groove probe locked into a dot-lattice family for 40s (dot grids
+# evade the orientation detectors - energy spreads across angle bins). CFG
+# phrase stamps + short phrases keep re-anchoring to the prompt.
+diffusion:
+  noise_idle: 0.05
+  phrase_flash:
+    guidance: 3.0
+  collapse:
+    anisotropy_max: 0.28
+    grid_max: 0.44
+
+scenes:
+  phrase_bars: 4              # ~6.8s per scene at 141 BPM - snappy reel pacing
+
+logo:
+  enable: true
+  path: assets/swisside_logo.png
+  opacity: 0.98
+  scale: 0.45
+  flash_seconds: 3.0
+  drop_chance: 1.0            # always burst on the drop
+  big_chance: 0.10
+  phrase_chance: 0.10
+
+display:
+  drop_strobe_chance: 1.0     # every drop earns the extended strobe volley
+  drop_strobe_seconds: 3.0

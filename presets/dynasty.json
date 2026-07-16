@@ -1,0 +1,136 @@
+{
+  "name": "Dynasty",
+  "negative": "watermark, frame, border, jpeg artifacts, bright daylight, vivid saturated colors, neon rainbow, cheerful, cute",
+  "scenes": [
+    {
+      "prompt": "colossal cobra facing forward, hood spread wide, scales of carved obsidian catching pale light, smoke coiling around it, ancient and utterly still, chiaroscuro, near-black background, cinematic",
+      "weight": 2.5
+    },
+    {
+      "prompt": "writhing mass of snakes coiling in darkness, grey iridescent scales, cobra hoods flaring, hypnotic serpent eyes, macro detail, black background, faint venom-green glints",
+      "weight": 2.0
+    },
+    {
+      "prompt": "giant serpent wrapped around a cracked temple column, weathered stone relief carvings, smoke and ash, obsidian and bone tones, slow menace, chiaroscuro",
+      "weight": 2.0
+    },
+    {
+      "prompt": "serpent formed of smoke and ash coiling through a black void, ethereal, slow and deliberate, long exposure, monochrome, ceremonial",
+      "weight": 2.0
+    },
+    {
+      "prompt": "immense serpent coils sliding over each other in darkness, overlapping carved scales catching pale light, ash dust, organic texture, chiaroscuro, ominous",
+      "weight": 1.5
+    },
+    {
+      "prompt": "hypnotic serpent eye extreme macro, vertical slit pupil, mirror-grey iris, wet glossy scales, black and white, chiaroscuro, dilating slowly",
+      "weight": 1.5
+    },
+    {
+      "prompt": "shed snake skin draped over cracked standing stones, translucent molted scales like torn silk, drifting ash, ghostly pale, macro detail, monochrome",
+      "weight": 1.0
+    },
+    {
+      "prompt": "colossal serpent molting between ruined pillars, shed skin peeling like parchment, ash storm haze, pale moonlight, dark monumental, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "hooded figures in a ritual circle around a glowing white serpent sigil carved in stone, torch smoke, falling ash, ceremonial, chiaroscuro, near-black",
+      "weight": 1.5
+    },
+    {
+      "prompt": "scattered ritual bonfires in a ruined stone amphitheater at night, hooded silhouettes between the flames, ash and smoke drifting, ceremonial, monochrome with faint ember glow",
+      "weight": 1.0
+    },
+    {
+      "prompt": "procession of ash-covered figures carrying torches through a ruined stone corridor, serpent reliefs on the walls, smoke, dark ceremonial, muted firelight, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "cracked fragments of an ancient stone inscription half-buried in ash, weathered carved capital letters, raking pale light, broken slabs, monochrome",
+      "weight": 1.0
+    },
+    {
+      "prompt": "underground serpent temple, carved cobra reliefs glowing faint white, torch-lit cracked stone, flat profile procession of serpent gods, ash and smoke, dark ochre-grey",
+      "weight": 1.0
+    },
+    {
+      "prompt": "megalithic standing stones on an ash plain, cracked monoliths with carved serpent spirals, fog, huge pale moon, monochrome, monumental and still",
+      "weight": 1.0
+    },
+    {
+      "prompt": "shattered ziggurat under a colossal pale moon, ash desert, the shadow of a serpent winding between the ruins, black and white, cinematic, dystopian",
+      "weight": 1.0
+    },
+    {
+      "prompt": "breathing stone walls of a primordial cavern, grey veins pulsing under cracked rock, pale glow from deep fissures, fog, dark monochrome, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "vast ruined stone staircase descending into darkness, broken uneven steps, pale glow rising from below, ash haze, monumental and oppressive, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "skeletal cathedral of rusted rebar and hanging chains swinging slowly, ash motes in a void, industrial decay, bone-grey chiaroscuro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "cathedral built of bleached skulls and serpent bones, hollow eye sockets flickering with pale inner fire, baroque bone architecture, ash and smoke, monochrome, macabre",
+      "weight": 1.0
+    },
+    {
+      "prompt": "cavernous concrete temple filled with a rave, white laser fans cutting through thick smoke, silhouetted crowd between monolithic pillars, near-black, ceremonial underground",
+      "weight": 1.5
+    },
+    {
+      "prompt": "sea of raised hands in strobing darkness, hypnotic crowd swaying in unison like a single coiling organism, sweat and ash haze, backlit silhouettes, grainy monochrome",
+      "weight": 1.5
+    },
+    {
+      "prompt": "crowd of dancers dissolving into black smoke, strobe-lit stone hall, long exposure, bodies merging into ash fog, monochrome, grainy 35mm",
+      "weight": 1.5
+    },
+    {
+      "prompt": "packed underground ritual rave at peak time, blinding white strobe freezing dancers mid-motion, arms raised toward a serpent idol, thick smoke, harsh flashes against darkness, photographic motion blur",
+      "weight": 1.5
+    },
+    {
+      "prompt": "dancers in black ritual garb covered in pale ash, ecstatic trance expressions, strobing shadows on cracked stone walls, dark ceremonial rave, cinematic low light, film grain",
+      "weight": 1.0
+    },
+    {
+      "prompt": "monolith of stacked speakers carved from black stone, cables like roots across a temple floor, dust hanging in white light beams, monumental, dark ambient",
+      "weight": 1.0
+    },
+    {
+      "prompt": "faces emerging from television static, half-formed, dissolving into ash, analog glitch, double exposure, haunting, monochrome dystopian",
+      "weight": 1.0
+    }
+  ],
+  "config": {
+    "diffusion": {
+      "strength_base": 0.52,
+      "noise_idle": 0.05,
+      "servo": {
+        "sat_target": 0.22,
+        "luma_target": 0.4
+      },
+      "phrase_flash": {
+        "guidance": 3.0,
+        "strength": 0.75
+      },
+      "collapse": {
+        "anisotropy_max": 0.28,
+        "grid_max": 0.44,
+        "grace_seconds": 2.0
+      }
+    },
+    "logo": {
+      "opacity": 0.9,
+      "scale": 0.85,
+      "drop_chance": 0.9,
+      "big_chance": 0.12,
+      "phrase_chance": 0.25
+    }
+  }
+}

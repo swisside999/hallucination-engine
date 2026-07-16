@@ -1,0 +1,174 @@
+{
+  "name": "General Rave",
+  "negative": "text, watermark, logo, frame, border, jpeg artifacts, bright daylight",
+  "scenes": [
+    {
+      "prompt": "crowd of dancers dissolving into black smoke, strobe-lit warehouse, long exposure, bodies merging into fog, monochrome with deep green accents, grainy 35mm",
+      "weight": 1.0
+    },
+    {
+      "prompt": "breathing concrete walls, brutalist cathedral interior, organic veins pulsing under wet stone surface, bioluminescent cracks, fog, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "liquid chrome humanoid figures morphing and splitting, industrial fog, caustic reflections, dark iridescent, macro detail",
+      "weight": 1.0
+    },
+    {
+      "prompt": "endless fractal tunnel of bone and machinery, ribbed corridor, breathing walls, symmetrical, volumetric haze, dark sci-fi",
+      "weight": 1.0
+    },
+    {
+      "prompt": "faces emerging from television static, half-formed, dissolving, analog glitch, double exposure, haunting, monochrome",
+      "weight": 1.0
+    },
+    {
+      "prompt": "dark water surface with slow ripples, moonlight caustics, koi shadows moving beneath, oil slick iridescence, drifting petals, top-down, photographic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "thousands of moths orbiting a floodlight in an empty parking structure, motion blur, sodium vapor glow, swarming particles",
+      "weight": 1.0
+    },
+    {
+      "prompt": "melting cathedral of speakers and subwoofers, cables like roots, dust in light beams, monolithic, dark ambient",
+      "weight": 1.0
+    },
+    {
+      "prompt": "cavernous abandoned warehouse, green laser fans cutting through smoke, silhouetted crowd, monolithic concrete pillars, darkness",
+      "weight": 1.0
+    },
+    {
+      "prompt": "sea of raised hands in strobing darkness, hypnotic crowd swaying in unison, sweat and haze, backlit silhouettes, grainy monochrome",
+      "weight": 1.0
+    },
+    {
+      "prompt": "overgrown brutalist ruins, vines strangling concrete, black moss, decaying industrial architecture, fog through broken windows, moonlight",
+      "weight": 1.0
+    },
+    {
+      "prompt": "rotting forest floor breathing, bioluminescent fungi pulsing, decaying leaves swirling into fractal patterns, dark organic matter, macro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "infinite dark stairwell spiraling downward, flickering sodium lights, wet concrete, brutalist geometry, oppressive, cinematic haze",
+      "weight": 1.0
+    },
+    {
+      "prompt": "skeletal cathedral of rusted rebar and hanging chains swinging slowly, dust motes in a void, industrial decay, chiaroscuro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "surrealist oil painting in the style of salvador dali, melting clocks dripping over a dark dancefloor, elongated shadows, dreamlike desert of speakers, impossible architecture",
+      "weight": 2.0
+    },
+    {
+      "prompt": "surrealist oil painting, distorted faces stretching out of black liquid, floating eyes, burning giraffe silhouettes, dali dreamscape, rich oil texture",
+      "weight": 2.0
+    },
+    {
+      "prompt": "dark renaissance oil painting, chiaroscuro crowd of figures reaching upward in candlelight, caravaggio lighting, swirling drapery, cracked varnish texture",
+      "weight": 1.0
+    },
+    {
+      "prompt": "baroque renaissance ceiling fresco of a storm of bodies spiraling into darkness, dramatic candlelit chiaroscuro, gold leaf glints, aged canvas craquelure",
+      "weight": 1.0
+    },
+    {
+      "prompt": "vintage 1930s rubber hose animation, max fleischer style, grinning cartoon characters with hollow pie-cut eyes dancing in unison, wobbling boneless limbs, heavy film scratches and dust, flickering projector light, unsettling frozen smiles, stark black and white ink",
+      "weight": 1.0
+    },
+    {
+      "prompt": "old silent-era cartoon haunted forest, twisted trees with faces, bouncing skeletons with unsettling smiles, heavy film grain, sepia, dark vignette",
+      "weight": 1.0
+    },
+    {
+      "prompt": "ancient egyptian tomb wall art, procession of gods with animal heads, hieroglyphs glowing faintly gold, torchlit ochre and lapis pigment, cracked plaster, flat profile figures",
+      "weight": 1.0
+    },
+    {
+      "prompt": "colossal egyptian pyramids and temple ruins at night, torch-lit obelisks, avenue of sphinxes vanishing into sandstorm haze, monumental scale, moonlit, ominous",
+      "weight": 1.0
+    },
+    {
+      "prompt": "writhing mass of snakes coiling in darkness, iridescent scales catching light, cobra hoods flaring, hypnotic serpent eyes, macro detail, black background",
+      "weight": 1.0
+    },
+    {
+      "prompt": "giant serpent wrapped around a ruined temple column, egyptian relief carvings, candle smoke, gold and obsidian, slow menace, chiaroscuro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "ancient alien beings with elongated skulls descending in a beam of light over a stone temple, hieroglyph carvings of spacecraft, volumetric god rays, dark sci-fi, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "occult illuminati ritual, hooded figures circling a glowing all-seeing eye atop a pyramid, candlelit lodge, masonic symbols in smoke, chiaroscuro, ominous",
+      "weight": 1.0
+    },
+    {
+      "prompt": "beautiful goth women dancing at an underground rave, black leather and velvet, dark eyeliner, ecstatic expressions, strobing shadows, cinematic low light, film grain",
+      "weight": 1.0
+    },
+    {
+      "prompt": "field of dark hypnotic eyes floating in blackness, dilated pupils, irises like spiral galaxies, eyes slowly opening and dissolving into smoke, wet glossy reflections, macro detail, chiaroscuro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "surrealist oil painting of hundreds of mismatched eyes melting in and out of a dark wall, weeping black mascara, gothic ink wash, gold leaf glints, ominous, rich impasto texture",
+      "weight": 1.0
+    },
+    {
+      "prompt": "packed underground club at peak time, blinding strobe light freezing dancers mid-motion, silhouettes with raised arms, thick smoke machine haze, sweat glistening, harsh white flashes against darkness, photographic motion blur",
+      "weight": 1.0
+    },
+    {
+      "prompt": "surrealist oil painting in the style of salvador dali, elephants on impossibly long spindly legs marching across a burning horizon, melting mirrors, floating drawers spilling smoke, rich oil texture, dreamlike",
+      "weight": 2.0
+    },
+    {
+      "prompt": "abstract surrealist dreamscape, salvador dali style, biomorphic shapes dissolving into a dark desert sky, soft melting watches draped over dead branches, swarming ants, hyperreal oil painting",
+      "weight": 2.0
+    },
+    {
+      "prompt": "fleet of glowing ufo saucers hovering over a night rave in the desert, abduction beams of white light, silhouetted crowd reaching upward, swirling storm clouds and stars, cinematic, ominous",
+      "weight": 1.0
+    },
+    {
+      "prompt": "cathedral built of human skulls, candlelit ossuary walls, hollow eye sockets flickering with inner fire, baroque bone architecture, dust and smoke, chiaroscuro, macabre",
+      "weight": 1.0
+    },
+    {
+      "prompt": "sensual female lips parting slowly, glossy dark red lipstick, smoke curling from the mouth, teeth glinting, macro photography, dramatic low-key lighting, film grain",
+      "weight": 1.0
+    },
+    {
+      "prompt": "brutalist apartment tower at night, hundreds of glowing windows each framing a silhouetted figure, voyeuristic grid of lit rooms, flickering televisions, rain streaks on concrete, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "macro still life of white powder lines and scattered pills on black glass, pastel capsules glowing under ultraviolet light, crystalline dust drifting, mirror reflections, dark hedonistic, shallow depth of field",
+      "weight": 1.0
+    },
+    {
+      "prompt": "endless corridor of mismatched doors and doorways opening into further doorways, impossible escher architecture, light spilling through cracks, some doors ajar into darkness, surreal, cinematic haze",
+      "weight": 1.0
+    },
+    {
+      "prompt": "hi-tech industrial machine hall, robotic arms and pistons moving in rhythm, glowing cables and server racks, steam vents, sodium and cyan lighting, dark sci-fi, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "aerial night view of a sprawling city, glowing towers and rivers of street light stretching to the horizon, fog drifting between skyscrapers, high altitude, dark cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "night highway interchange seen from above, streams of cars and trucks leaving red and white light trails, long exposure, wet asphalt reflections, weaving overpasses, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "extreme macro of a dark motherboard, towering capacitors and heatsinks like a night city, pulsing traces of glowing copper circuitry, solder joints glinting, shallow depth of field, cyberpunk",
+      "weight": 1.0
+    }
+  ]
+}

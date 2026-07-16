@@ -1,0 +1,10 @@
+# Dynasty offline-render overlay: engine tuning lives IN the preset now
+# (presets/dynasty.json "config") - this only turns the logo on for renders.
+logo:
+  enable: true
+  path: ""              # point at your own white-on-transparent logo PNG
+
+# select the matching prompt preset too - without this, a CLI render that
+# passes only --config gets General Rave scenes with this overlay bolted on
+scenes:
+  preset: Dynasty

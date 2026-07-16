@@ -1,0 +1,131 @@
+{
+  "name": "Kowloon",
+  "negative": "watermark, frame, border, jpeg artifacts, bright daylight, overcast grey sky, pastel colors, washed out, suburban, cheerful",
+  "scenes": [
+    {
+      "prompt": "rain-slicked kowloon street at night, round red paper lanterns glowing overhead, blurred crimson neon reflections smeared on wet asphalt, steam swirling, teal shadows, dystopian cyberpunk, cinematic bokeh",
+      "weight": 2.5
+    },
+    {
+      "prompt": "hundreds of round red paper lanterns with gold tassels drifting in black smoke, warm crimson glow, soft focus, near-black background, cinematic depth of field",
+      "weight": 2.5
+    },
+    {
+      "prompt": "dripping red spray paint graffiti sprawled across a crumbling concrete wall, wet paint runs, grunge texture, dim teal haze, urban decay, cinematic",
+      "weight": 2.0
+    },
+    {
+      "prompt": "beautiful alternative woman with dark eye makeup lit by red neon glow, wavy hair, cyberpunk street fashion, crimson and teal split lighting, film grain, cinematic portrait, near-black background",
+      "weight": 2.0
+    },
+    {
+      "prompt": "shattered shards of red light from a mirror ball sweeping across dancing silhouettes in thick smoke, deep crimson and teal haze, soft bokeh, cinematic",
+      "weight": 2.0
+    },
+    {
+      "prompt": "woman in a red hooded jacket in a dark foggy alley, huge blurred graffiti mural glowing behind her, red rim light, teal haze, 35mm film still, cinematic",
+      "weight": 1.5
+    },
+    {
+      "prompt": "dystopian kowloon rooftops swallowed by fog at night, red lantern glow bleeding through the mist, tangled antenna silhouettes, near-black, cinematic",
+      "weight": 1.5
+    },
+    {
+      "prompt": "neon night market in a narrow alley, steam billowing from food stalls, hanging red lanterns, crowd with glossy umbrellas, wet ground reflections, teal and crimson, cyberpunk bokeh",
+      "weight": 1.5
+    },
+    {
+      "prompt": "packed warehouse dance floor, red strobe freezing raised arms mid-motion, swirling smoke, sweat glistening, crimson and teal, grainy 35mm, cinematic",
+      "weight": 1.5
+    },
+    {
+      "prompt": "chinese dragon made of glowing red neon coiling through darkness and smoke, sinuous curves, crimson light trails, sparks drifting, near-black void, cyberpunk",
+      "weight": 1.5
+    },
+    {
+      "prompt": "rainy street at night, long red taxi light streaks melting into wet asphalt, blurred figures under umbrellas, heavy bokeh, hong kong, teal and crimson, cinematic",
+      "weight": 1.5
+    },
+    {
+      "prompt": "dj silhouetted in dense red haze behind a spinning vinyl record, hands in motion, smoke light beams, crimson glow, cinematic",
+      "weight": 1.5
+    },
+    {
+      "prompt": "crimson neon calligraphy glowing through rain and steam, soft halation, sparks drifting, dark blurred street, cinematic macro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "smoky mahjong den in deep red lamplight, hunched silhouettes, a single round lantern swinging, curling cigarette smoke, film noir, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "incense smoke coiling through a red-lit temple shrine, round hanging lanterns, gold glints in darkness, drifting embers, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "flooded back alley mirroring red lantern glow, ripples distorting the reflections, drifting steam, dystopian cyberpunk, near-black",
+      "weight": 1.0
+    },
+    {
+      "prompt": "crowd of dancers dissolving into red smoke, long exposure light trails, dark warehouse haze, grainy 35mm",
+      "weight": 1.0
+    },
+    {
+      "prompt": "close-up of lips and chrome jewelry under strobing red light, glitter on skin, alternative fashion, near-black background, cinematic macro",
+      "weight": 1.0
+    },
+    {
+      "prompt": "chrome chains and red vinyl fashion under ultraviolet glow, sequins sparkling like embers, dark studio haze, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "cyberpunk woman with a glowing red visor moving through a smoky market crowd, holographic shimmer, teal haze, motion blur, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "koi fish of living red neon swimming through black rain, glowing ripples, sparks, near-black, cyberpunk",
+      "weight": 1.0
+    },
+    {
+      "prompt": "silk banners and red tassels rippling in smoke above a dark dance floor, embers rising, crimson and gold, cinematic",
+      "weight": 1.0
+    },
+    {
+      "prompt": "roller skater spinning through red and teal light beams, motion blur trails, mirror-ball bokeh floating like fireflies, dark rink haze, film grain",
+      "weight": 1.0
+    },
+    {
+      "prompt": "winding trail of glowing red lanterns descending a foggy hillside street at night, soft orbs in mist, near-black, cinematic",
+      "weight": 1.0
+    }
+  ],
+  "config": {
+    "diffusion": {
+      "strength_base": 0.55,
+      "noise_idle": 0.05,
+      "servo": {
+        "sat_target": 0.4,
+        "luma_target": 0.38
+      },
+      "phrase_flash": {
+        "guidance": 3.0,
+        "strength": 0.75
+      },
+      "collapse": {
+        "anisotropy_max": 0.26,
+        "grid_max": 0.4,
+        "grace_seconds": 1.5
+      }
+    },
+    "display": {
+      "hue_rate_deg": 0.0
+    },
+    "logo": {
+      "opacity": 0.95,
+      "scale": 0.85,
+      "drop_chance": 0.9,
+      "big_chance": 0.12,
+      "phrase_chance": 0.25
+    }
+  }
+}
