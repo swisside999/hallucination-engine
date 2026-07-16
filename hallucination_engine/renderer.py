@@ -133,7 +133,8 @@ class OfflineRenderer:
         self._setup_gl()
 
         long_side = max(self.out_w, self.out_h)
-        bitrate = "5M" if long_side <= 512 else "8M" if long_side <= 768 else "12M"
+        bitrate = (self.cfg.get("render", {}) or {}).get("bitrate") or (
+            "5M" if long_side <= 512 else "8M" if long_side <= 768 else "12M")
         n_video = int(dur * self.fps)
         cmd = [ffmpeg, "-y", "-loglevel", "error",
                "-f", "rawvideo", "-pix_fmt", "rgb24",

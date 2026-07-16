@@ -119,6 +119,10 @@ running different logos in different timeslots.
 - Formats: square 1:1, Instagram Reel 9:16 (1080x1920), YouTube 16:9. The
   reel is center-cropped from a larger square render inside the pipeline,
   one encode, no intermediate files.
+- Quality tiers: Draft (512px), HD (1024px), Full (1920px), and Ultra,
+  which is Full plus the real SD VAE decoder instead of the realtime tiny
+  one and a 20M video bitrate. Ultra is visibly sharper in detail and
+  color but renders at roughly 0.2x realtime instead of 0.75x.
 - Drop cues: click the waveform where the track actually drops. Each cue
   fires the full drop path: scene explosion, logo burst, strobe volley.
   Cues mute the automatic drop detector, so the video hits exactly where

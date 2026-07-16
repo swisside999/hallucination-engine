@@ -209,13 +209,13 @@ enum RenderFormat: String, CaseIterable, Identifiable {
         switch (self, q) {
         case (.square, .draft): (512, 512, 512)
         case (.square, .hd): (1024, 1024, 1024)
-        case (.square, .full): (1920, 1920, 1920)
+        case (.square, .full), (.square, .ultra): (1920, 1920, 1920)
         case (.reel, .draft): (512, 288, 512)
         case (.reel, .hd): (1024, 576, 1024)
-        case (.reel, .full): (1920, 1080, 1920)
+        case (.reel, .full), (.reel, .ultra): (1920, 1080, 1920)
         case (.landscape, .draft): (512, 512, 288)
         case (.landscape, .hd): (1024, 1024, 576)
-        case (.landscape, .full): (1920, 1920, 1080)
+        case (.landscape, .full), (.landscape, .ultra): (1920, 1920, 1080)
         }
     }
 
@@ -235,10 +235,13 @@ private extension Double {
     }
 }
 
+/// Ultra = Full's 1920px plus the full SD VAE (diffusion.taesd: false) and a
+/// bitrate bump - noticeably sharper decode, roughly 3-4x slower render.
 enum RenderQuality: String, CaseIterable, Identifiable {
     case draft = "Draft"
     case hd = "HD"
     case full = "Full"
+    case ultra = "Ultra"
     var id: String { rawValue }
 }
 

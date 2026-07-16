@@ -360,9 +360,10 @@ final class Engine: ObservableObject {
     /// renderer itself mutes the drop heuristic when drop_times is present.
     private func overlayConfig(_ job: RenderJob) -> [String: Any] {
         var cfg: [String: Any] = [:]
-        if !job.dropCues.isEmpty {
-            cfg["render"] = ["drop_times": job.dropCues.sorted()]
-        }
+        var render: [String: Any] = [:]
+        if !job.dropCues.isEmpty { render["drop_times"] = job.dropCues.sorted() }
+        if job.quality == .ultra { render["bitrate"] = "20M" }
+        if !render.isEmpty { cfg["render"] = render }
         if let bpm = job.bpmOverride {
             cfg["tempo"] = ["bpm_override": bpm]
         }
@@ -375,6 +376,7 @@ final class Engine: ObservableObject {
                            "flash_seconds": job.logo.flashSeconds]
         }
         var diffusion: [String: Any] = [:]
+        if job.quality == .ultra { diffusion["taesd"] = false }  // full SD VAE decode
         if job.flavors.sceneStamps {
             diffusion["phrase_flash"] = ["guidance": EngineOverride.sceneStampGuidance]
         }

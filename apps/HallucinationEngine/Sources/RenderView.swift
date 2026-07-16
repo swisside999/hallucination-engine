@@ -101,7 +101,9 @@ struct RenderView: View {
                     Picker("", selection: $quality) {
                         ForEach(RenderQuality.allCases) { q in Text(q.rawValue).tag(q) }
                     }
-                    .pickerStyle(.segmented).labelsHidden().frame(width: 200)
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 260)
+                    .help("Ultra: full SD VAE decode + 20M bitrate - sharper "
+                          + "detail and color, renders 3-4x slower")
                     Picker("", selection: $fps) {
                         Text("30 FPS").tag(30)
                         Text("60 FPS").tag(60)
