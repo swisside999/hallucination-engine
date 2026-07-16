@@ -193,6 +193,12 @@ The optional `config` block is deep-merged over `config.yaml` when the
 preset loads, so picking a preset also brings the tuning its scenes need.
 The built-in 42-scene bank exports itself as "General Rave" on first run.
 
+Presets switch live: pick one in the cockpit while a set is running and
+the engine re-encodes the new bank in the background, then crossfades the
+conditioning over a few seconds - no restart, no dropped frames. The
+preset's config overrides apply live too, and revert cleanly when you
+switch again.
+
 Two lessons baked into the shipped presets, learned the hard way: dark
 monochrome scene banks need a lower saturation target or the color servo
 slowly turns them neon, and brand-color presets must zero the hue rotation

@@ -52,7 +52,8 @@ struct PresetMenu: View {
                 .font(HE.data).lineLimit(1)
         }
         .frame(maxWidth: 170)
-        .help("prompt preset for the next launch - edit in PRESETS")
+        .help("prompt preset - switches the running set live (crossfaded), "
+              + "otherwise applies at next launch. edit in PRESETS")
     }
 }
 

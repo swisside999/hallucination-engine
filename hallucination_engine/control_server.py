@@ -191,6 +191,22 @@ class ControlServer(threading.Thread):
             c.logo_burst += 1
         elif cmd == "logo_hold":    # {"cmd":"logo_hold","value":true} - show while true
             c.logo_hold = bool(msg.get("value"))
+        elif cmd == "preset":       # live prompt-preset switch, crossfaded
+            name = str(msg.get("name") or "General Rave")
+
+            def _switch():
+                if self.engine.apply_preset(name):
+                    # clients cache the scene bank from hello - resend it
+                    hello = self._hello()
+                    with self._clients_lock:
+                        clients = list(self._clients)
+                    for sock in clients:
+                        self._send(sock, hello)
+
+            # encode off this reader thread so a slow encode never blocks
+            # the client's command stream
+            threading.Thread(target=_switch, daemon=True,
+                             name="preset-switch").start()
         elif cmd == "scene_select":  # pin scene i as next phrase and jump to it
             bank = getattr(self.engine, "bank", None)
             if bank:

@@ -89,6 +89,9 @@ final class Engine: ObservableObject {
     func selectPreset(_ name: String) {
         objectWillChange.send()
         promptPreset = name
+        if connected {  // live set running: switch the bank mid-set, crossfaded
+            send(["cmd": "preset", "name": name.isEmpty ? "General Rave" : name])
+        }
     }
 
     func rememberMix(_ path: String) {

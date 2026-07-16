@@ -32,6 +32,10 @@ class DiffusionEngine(threading.Thread):
         self.current_strength = float(self.dcfg["strength_base"])
         self._seen_reset = 0
         self._rng = np.random.default_rng()
+        # live preset switch: old bank kept for the crossfade window
+        self._old_bank = None
+        self._fade_t0 = None
+        self._preset_lock = threading.Lock()
         # live stats for the control server
         self.frames_total = 0
         self.resets_total = 0
@@ -101,6 +105,13 @@ class DiffusionEngine(threading.Thread):
         self.bank = PromptBank(pipe, prompts.SCENES, prompts.NEGATIVE, self.device,
                                shuffle=self.scfg.get("shuffle", True),
                                hybrid_chance=self.scfg.get("hybrid_chance", 0.3))
+        # launch-time snapshot of the preset-overridable sections, so a live
+        # preset switch can revert one preset's overrides before applying the
+        # next - overrides must never leak between presets
+        import copy
+        self._cfg_baseline = copy.deepcopy(
+            {k: self.cfg[k] for k in ("diffusion", "display", "scenes")
+             if k in self.cfg})
 
         # GPU-resident loop state: the frame lives on-device as (1,3,H,W) fp32 in
         # [0,1] - fp16 is only for the VAE/UNet. Transform/servo/unsharp in fp16
@@ -329,6 +340,8 @@ class DiffusionEngine(threading.Thread):
 
     def reset_run_state(self):
         """Per-run loop state - shared by the realtime thread and offline render."""
+        self._old_bank = None
+        self._fade_t0 = None
         self._bad_since = None
         self._last_phrase = None
         self._rampage_until = 0.0
@@ -336,6 +349,38 @@ class DiffusionEngine(threading.Thread):
         self._logo_last_phrase = None
         self._n_iter = 0
         self._last_log = time.monotonic()
+
+    def apply_preset(self, name):
+        """Live prompt-preset switch, callable from the control-server thread.
+        The text encoder is idle during the run loop, so re-encoding the bank
+        here is safe; the swap is one attribute write and step() crossfades
+        the conditioning for a few seconds. Preset config overrides merge into
+        the SHARED cfg section dicts in place (startup-only keys like
+        resolution/taesd merge but stay inert until relaunch); the launch
+        baseline is restored first so overrides never leak between presets."""
+        import copy
+
+        from .utils import deep_merge
+        with self._preset_lock:
+            pc = prompts.load_preset(name)
+            if pc is None:
+                return False
+            for key, base in self._cfg_baseline.items():
+                merged = deep_merge(base, pc.get(key) or {})
+                live = self.cfg[key]
+                for stale in [k for k in live if k not in merged]:
+                    del live[stale]  # extras a previous preset added
+                live.update(copy.deepcopy(merged))
+            bank = PromptBank(self.pipe, prompts.SCENES, prompts.NEGATIVE,
+                              self.device,
+                              shuffle=self.scfg.get("shuffle", True),
+                              hybrid_chance=self.scfg.get("hybrid_chance", 0.3))
+            self._old_bank = self.bank
+            self._fade_t0 = None
+            self.bank = bank
+            print(f"[diffusion] live preset -> {prompts.CURRENT_PRESET} "
+                  f"({len(prompts.SCENES)} scenes, crossfading)")
+            return True
 
     def step(self, s, t):
         """One feedback-loop iteration at (state s, timeline t). t is wall time
@@ -400,6 +445,18 @@ class DiffusionEngine(threading.Thread):
         self.current_strength = strength
         emb = self.bank.get(s.phrase_index, s.phrase_phase, s.synth,
                             self.scfg["blend_start"], self.scfg["shimmer"])
+        if self._old_bank is not None:  # live preset switch: crossfade banks
+            if self._fade_t0 is None:
+                self._fade_t0 = t
+            f = (t - self._fade_t0) / float(self.scfg.get("preset_fade_secs", 4.0))
+            if f >= 1.0:
+                self._old_bank = None
+                self._fade_t0 = None
+            else:
+                old = self._old_bank.get(s.phrase_index, s.phrase_phase, s.synth,
+                                         self.scfg["blend_start"],
+                                         self.scfg["shimmer"])
+                emb = prompts.slerp(old, emb, f * f * (3.0 - 2.0 * f))
 
         arr = self._generate(frame, emb, strength, guidance)
         if not self.torch.isfinite(arr).all():
