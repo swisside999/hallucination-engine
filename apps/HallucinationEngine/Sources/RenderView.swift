@@ -21,6 +21,9 @@ struct RenderView: View {
     @State private var flavors = RenderFlavors()
     @State private var player: AVPlayer?
     @StateObject private var wave = WaveformLoader()
+    @AppStorage("renderTimelineMode") private var timelineMode = false
+    @StateObject private var store = TimelineStore()
+    @State private var sceneNames: [String] = []
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -50,8 +53,16 @@ struct RenderView: View {
             if outPath.isEmpty { suggestOutput() }
             if logo.path.isEmpty { logo.path = engine.logoPath }
             wave.load(mix)
+            store.load(mix: mix)
+            sceneNames = engine.presetScenes(named: engine.promptPreset)
         }
-        .onChange(of: mix) { _, m in wave.load(m) }
+        .onChange(of: mix) { _, m in
+            wave.load(m)
+            store.load(mix: m)
+        }
+        .onChange(of: engine.promptPreset) { _, p in
+            sceneNames = engine.presetScenes(named: p)
+        }
         .onChange(of: engine.previewPath) { _, p in
             if let p { player = AVPlayer(url: URL(fileURLWithPath: p)); player?.play() }
         }
@@ -131,7 +142,17 @@ struct RenderView: View {
     private var directionPanel: some View {
         Panel {
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(text: "DIRECTION")
+                HStack(spacing: 10) {
+                    SectionLabel(text: "DIRECTION")
+                    Picker("", selection: $timelineMode) {
+                        Text("AUTO").tag(false)
+                        Text("TIMELINE").tag(true)
+                    }
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 160)
+                    .help("AUTO: random scene walk + drop cue list. TIMELINE: "
+                          + "video-editor lanes for drops, scenes, logo, strobe "
+                          + "and intensity - empty lanes keep AUTO behavior")
+                }
                 HStack(spacing: 10) {
                     Text("BPM").heFieldLabel()
                     TextField("auto", text: $bpmText)
@@ -142,6 +163,19 @@ struct RenderView: View {
                     Text("pin the tempo when auto-detect drifts (e.g. 141)")
                         .font(HE.mono(9)).foregroundStyle(HE.textFaint)
                 }
+                if timelineMode {
+                    TimelineEditor(timeline: $store.timeline, mixPath: mix,
+                                   buckets: wave.buckets, duration: wave.duration,
+                                   sceneNames: sceneNames,
+                                   bpmPin: Double(bpmText).flatMap { $0 > 0 ? $0 : nil })
+                } else {
+                    dropCuesSection
+                }
+            }
+        }
+    }
+
+    private var dropCuesSection: some View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("DROP CUES").heFieldLabel()
@@ -178,8 +212,6 @@ struct RenderView: View {
                         }
                     }
                 }
-            }
-        }
     }
 
     private var logoPanel: some View {
@@ -334,7 +366,12 @@ struct RenderView: View {
         j.quality = quality
         j.diffFps = diffFps
         j.out = outPath
-        j.dropCues = cues.compactMap(\.seconds).sorted().filter { $0 > 0 }
+        if timelineMode {
+            j.timeline = store.timeline
+            j.dropCues = store.timeline.drops.sorted().filter { $0 > 0 }
+        } else {
+            j.dropCues = cues.compactMap(\.seconds).sorted().filter { $0 > 0 }
+        }
         j.bpmOverride = Double(bpmText).flatMap { $0 > 0 ? $0 : nil }
         var l = logo
         l.scale = min(l.scale, format.maxLogoScale)

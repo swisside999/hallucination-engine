@@ -56,6 +56,9 @@ def parse_args():
                     help="length to render, seconds or MM:SS (default: to end of file)")
     ap.add_argument("--render-diff-fps", type=float, default=6.0,
                     help="diffusion steps per VIRTUAL second (render quality knob)")
+    ap.add_argument("--analyze", metavar="OUT.json",
+                    help="audio-only analysis of --file (drops, bpm) to JSON; "
+                         "no GPU, exits when done")
     ap.add_argument("--render-crop", metavar="WxH",
                     help="center-crop the square render to WxH, e.g. 1080x1920 "
                          "for a 9:16 reel from --render-size 1920")
@@ -98,6 +101,14 @@ def main():
         return
 
     cfg = load_config(args)
+
+    if args.analyze:
+        if not args.file:
+            sys.exit("--analyze needs --file")
+        from hallucination_engine.analysis import analyze
+        analyze(cfg, args.file, args.analyze)
+        return
+
     export_local_models(cfg)
 
     from hallucination_engine import prompts

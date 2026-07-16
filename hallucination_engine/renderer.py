@@ -171,7 +171,45 @@ class OfflineRenderer:
         pending_drops = sorted(float(t) - self.seek
                                for t in self.cfg.get("render", {}).get("drop_times", [])
                                if float(t) >= self.seek)
-        if pending_drops:  # cues own the drops: mute the heuristic detector
+
+        # timeline (the app's timeline editor): scheduled scenes, logo windows,
+        # strobe zones and an intensity curve, all track-absolute seconds.
+        render_cfg = self.cfg.get("render", {}) or {}
+        tl = render_cfg.get("timeline") or {}
+        tl_scenes = sorted(((float(c["t"]) - self.seek, int(c["i"]))
+                            for c in tl.get("scenes", [])), key=lambda c: c[0])
+        tl_logo = sorted((float(c["t"]) - self.seek,
+                          float(c["t"]) - self.seek + float(c["len"]))
+                         for c in tl.get("logo", []))
+        tl_strobe = sorted((float(c["t"]) - self.seek,
+                            float(c["t"]) - self.seek + float(c["len"]))
+                           for c in tl.get("strobe", []))
+        tl_intensity = sorted(((float(c["t"]) - self.seek, float(c["v"]))
+                               for c in tl.get("intensity", [])), key=lambda c: c[0])
+
+        def scene_at(t):
+            i = None
+            for ct, ci in tl_scenes:
+                if ct > t:
+                    break
+                i = ci
+            return i if i is not None else tl_scenes[0][1]
+
+        def in_window(t, windows):
+            return any(a <= t < b for a, b in windows)
+
+        def intensity_at(t):
+            pts = tl_intensity
+            if t <= pts[0][0]:
+                return pts[0][1]
+            for (t0, v0), (t1, v1) in zip(pts, pts[1:]):
+                if t < t1:
+                    return v0 + (v1 - v0) * (t - t0) / max(t1 - t0, 1e-6)
+            return pts[-1][1]
+
+        # timeline presence mutes the heuristic even with every lane empty -
+        # an empty timeline means "no drops", not "guess for me"
+        if pending_drops or "timeline" in render_cfg:
             analyzer.tn_drop_min = 99.0
 
         n_blocks = (len(mono) + block - 1) // block
@@ -183,8 +221,22 @@ class OfflineRenderer:
                     self.controls.drop_request += 1
                 analyzer.process_block(mono[i * block:(i + 1) * block])
 
+                if tl_logo:
+                    self.controls.logo_hold = in_window(vt, tl_logo)
+                if tl_intensity:
+                    self.controls.denoise_offset = max(-0.3, min(0.3, intensity_at(vt)))
+
                 if vt >= next_diff:
                     next_diff += diff_period
+                    if tl_scenes:
+                        # hold the scheduled scene: re-pin current phrase, and
+                        # aim the end-of-phrase pre-blend at what comes next.
+                        # ponytail: 8s lookahead approximates the blend window;
+                        # exact phrase-boundary prediction if cuts land early.
+                        pi = self.bus.read().phrase_index
+                        bank = self.engine.bank
+                        bank.pin(pi, scene_at(vt))
+                        bank.pin(pi + 1, scene_at(vt + 8.0))
                     self.engine.step(eng_consumer.read(), vt)
                     last_diff_vt = vt
 
@@ -220,7 +272,7 @@ class OfflineRenderer:
                         if s.big_onset:
                             strobe = self.disp["strobe_intensity"]
                         burst = drop_env if drop_env > 0.05 else 0.0
-                        if t < strobe_until:
+                        if t < strobe_until or (tl_strobe and in_window(t, tl_strobe)):
                             burst = max(burst, 0.8)
                         if burst > 0.0 and int(t * self.disp.get("drop_strobe_hz", 9)) % 2 == 0:
                             strobe = max(strobe, self.disp.get("drop_strobe", 0.45) * burst)

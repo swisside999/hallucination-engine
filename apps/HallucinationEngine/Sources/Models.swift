@@ -1,3 +1,5 @@
+import Combine
+import CryptoKit
 import Foundation
 
 /// The single source of truth for what each named style flavor / override
@@ -245,6 +247,94 @@ enum RenderQuality: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+// --------------------------------------------------------------- timeline
+
+/// Timeline editor document, one per mix file. Times are track-absolute
+/// seconds; the engine consumes it as render.timeline in the overlay config.
+struct RenderTimeline: Codable, Equatable {
+    var drops: [Double] = []
+    var scenes: [SceneCue] = []      // scene i takes over at t; sorted by t
+    var logo: [Region] = []
+    var strobe: [Region] = []
+    var intensity: [CurvePoint] = [] // denoise offset curve, v in -0.3..+0.3
+    var bpm: Double = 0              // last --analyze result, 0 = unknown
+
+    struct SceneCue: Codable, Equatable, Identifiable {
+        var id = UUID()
+        var t: Double
+        var i: Int
+        enum CodingKeys: String, CodingKey { case t, i }
+    }
+
+    struct Region: Codable, Equatable, Identifiable {
+        var id = UUID()
+        var t: Double
+        var len: Double
+        enum CodingKeys: String, CodingKey { case t, len }
+    }
+
+    struct CurvePoint: Codable, Equatable, Identifiable {
+        var id = UUID()
+        var t: Double
+        var v: Double
+        enum CodingKeys: String, CodingKey { case t, v }
+    }
+
+    var isEmpty: Bool {
+        drops.isEmpty && scenes.isEmpty && logo.isEmpty && strobe.isEmpty
+            && intensity.isEmpty
+    }
+}
+
+/// Loads/saves one RenderTimeline per mix path, debounced, in Application
+/// Support - mixes stay untouched, timelines survive app restarts.
+@MainActor
+final class TimelineStore: ObservableObject {
+    @Published var timeline = RenderTimeline() {
+        didSet { scheduleSave() }
+    }
+    private var mixPath = ""
+    private var saveTask: Task<Void, Never>?
+
+    private static var dir: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory,
+                                            in: .userDomainMask).first!
+        return base.appendingPathComponent("Hallucination Engine/timelines")
+    }
+
+    private func fileURL(_ mix: String) -> URL {
+        let digest = Insecure.SHA1.hash(data: Data(mix.utf8))
+            .map { String(format: "%02x", $0) }.joined().prefix(16)
+        return Self.dir.appendingPathComponent(digest + ".json")
+    }
+
+    func load(mix: String) {
+        saveTask?.cancel()
+        mixPath = mix
+        guard !mix.isEmpty,
+              let d = try? Data(contentsOf: fileURL(mix)),
+              let t = try? JSONDecoder().decode(RenderTimeline.self, from: d)
+        else { timeline = RenderTimeline(); return }
+        timeline = t
+    }
+
+    private func scheduleSave() {
+        guard !mixPath.isEmpty else { return }
+        saveTask?.cancel()
+        let mix = mixPath
+        let snapshot = timeline
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled, self != nil else { return }
+            try? FileManager.default.createDirectory(at: Self.dir,
+                                                     withIntermediateDirectories: true)
+            if let d = try? JSONEncoder().encode(snapshot) {
+                try? d.write(to: self!.fileURL(mix))
+            }
+        }
+    }
+}
+
 /// One drop cue, kept as editable text ("1:20.4" or "80.4"), track-absolute.
 struct DropCue: Identifiable, Equatable {
     var id = UUID()
@@ -288,6 +378,7 @@ struct RenderJob {
     var bpmOverride: Double?
     var logo = RenderLogo()
     var flavors = RenderFlavors()
+    var timeline: RenderTimeline?   // nil = AUTO mode (random walk + cue list)
 }
 
 /// A named audio input device (index = what --device expects).

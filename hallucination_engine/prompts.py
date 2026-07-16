@@ -210,6 +210,14 @@ class PromptBank:
                     self._order.append(i)
             return self._order[phrase_index]
 
+    def pin(self, phrase_index: int, scene_id: int):
+        """Force a specific phrase to a specific scene (timeline renders).
+        Unlike pin_next this does not truncate the walk, so repeated re-pins
+        while the timeline holds one scene are cheap and stable."""
+        self._entry(phrase_index)  # materialize the walk up to here
+        with self._lock:
+            self._order[phrase_index] = int(scene_id) % len(self.scenes)
+
     def pin_next(self, phrase_index: int, scene_id: int):
         """Make the NEXT phrase (phrase_index + 1) a specific scene - the control
         app pins it then bumps scene_skip so it becomes current immediately."""

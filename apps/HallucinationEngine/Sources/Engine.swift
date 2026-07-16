@@ -363,6 +363,26 @@ final class Engine: ObservableObject {
         var render: [String: Any] = [:]
         if !job.dropCues.isEmpty { render["drop_times"] = job.dropCues.sorted() }
         if job.quality == .ultra { render["bitrate"] = "20M" }
+        if let tl = job.timeline {
+            var t: [String: Any] = [:]
+            if !tl.scenes.isEmpty {
+                t["scenes"] = tl.scenes.sorted { $0.t < $1.t }
+                    .map { ["t": $0.t, "i": $0.i] }
+            }
+            if !tl.logo.isEmpty {
+                t["logo"] = tl.logo.map { ["t": $0.t, "len": $0.len] }
+            }
+            if !tl.strobe.isEmpty {
+                t["strobe"] = tl.strobe.map { ["t": $0.t, "len": $0.len] }
+            }
+            if !tl.intensity.isEmpty {
+                t["intensity"] = tl.intensity.sorted { $0.t < $1.t }
+                    .map { ["t": $0.t, "v": $0.v] }
+            }
+            // presence of the key mutes the auto drop heuristic even when
+            // every lane but drops is empty - the timeline owns the render
+            render["timeline"] = t
+        }
         if !render.isEmpty { cfg["render"] = render }
         if let bpm = job.bpmOverride {
             cfg["tempo"] = ["bpm_override": bpm]
@@ -501,6 +521,57 @@ final class Engine: ObservableObject {
         guard let m = re.firstMatch(in: s, range: range),
               let r = Range(m.range(at: 1), in: s) else { return nil }
         return String(s[r])
+    }
+
+    // -------------------------------------------------------------- analyze
+
+    @Published var analyzeRunning = false
+
+    /// Fast audio-only pass (no GPU): drops + BPM for the timeline editor.
+    /// A 5 min mix takes ~3 s.
+    func analyzeMix(_ mix: String,
+                    completion: @escaping (_ drops: [Double], _ bpm: Double) -> Void) {
+        guard !analyzeRunning, !mix.isEmpty else { return }
+        analyzeRunning = true
+        let out = NSTemporaryDirectory() + "he_analysis_\(UUID().uuidString).json"
+        let p = Process()
+        p.currentDirectoryURL = URL(fileURLWithPath: repoPath)
+        p.executableURL = URL(fileURLWithPath: repoPath + "/.venv/bin/python")
+        p.arguments = ["main.py", "--file", mix, "--analyze", out]
+        p.standardOutput = Pipe()
+        p.standardError = Pipe()
+        p.terminationHandler = { proc in
+            Task { @MainActor in
+                self.analyzeRunning = false
+                defer { try? FileManager.default.removeItem(atPath: out) }
+                guard proc.terminationStatus == 0,
+                      let d = try? Data(contentsOf: URL(fileURLWithPath: out)),
+                      let obj = try? JSONSerialization.jsonObject(with: d)
+                        as? [String: Any]
+                else { return }
+                let drops = (obj["drops"] as? [NSNumber])?.map(\.doubleValue) ?? []
+                let bpm = (obj["bpm"] as? NSNumber)?.doubleValue ?? 0
+                completion(drops, bpm)
+            }
+        }
+        do { try p.run() } catch { analyzeRunning = false }
+    }
+
+    /// Scene prompts of a preset file by display name; empty name or a miss
+    /// falls back to the default bank ("General Rave").
+    func presetScenes(named name: String) -> [String] {
+        let fm = FileManager.default
+        let files = (try? fm.contentsOfDirectory(at: presetsDir,
+                                                 includingPropertiesForKeys: nil)) ?? []
+        var fallback: [String] = []
+        for url in files where url.pathExtension == "json" {
+            guard let d = try? Data(contentsOf: url),
+                  let p = try? JSONDecoder().decode(PromptPreset.self, from: d)
+            else { continue }
+            if p.name == name { return p.scenes.map(\.prompt) }
+            if p.name == "General Rave" { fallback = p.scenes.map(\.prompt) }
+        }
+        return fallback
     }
 
     // --------------------------------------------------------------- thumbs

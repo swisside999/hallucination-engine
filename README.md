@@ -129,6 +129,15 @@ running different logos in different timeslots.
   the music does. This exists because breakdown sections with sparse kick
   accents defeat any kick-drought heuristic; offline you know the whole
   track, so you may as well say where the drops are.
+- Timeline mode: a video-editor style lane view of the whole mix, next to
+  the classic AUTO mode. Drop markers auto-detected by a fast audio-only
+  analysis pass (then dragged into place by ear, with a playhead and real
+  audio playback), scene blocks with explicit order and lengths instead of
+  the random walk (click a block to pick its scene from the bank, with
+  thumbnails), logo windows, strobe zones, and an intensity curve that
+  pushes the dream harder or calmer over time. Edits snap to the detected
+  beat grid. Empty lanes keep the automatic behavior. Timelines save per
+  mix and survive restarts.
 - BPM pin, for tracks where the detector locks onto a neighboring value.
 - Logo burn-in with opacity, size, per-drop chance and flash length,
   independent of your live logo settings.
@@ -148,6 +157,7 @@ CLI equivalents, if you would rather script it:
 python main.py --file mix.wav --render out.mp4 --render-duration 5:00
 python main.py --file mix.wav --render reel.mp4 \
     --render-size 1920 --render-crop 1080x1920
+python main.py --file mix.wav --analyze cues.json   # drops + BPM, no GPU
 ```
 
 **Presets** edits the scene banks: prompt text, per-scene weights, the
