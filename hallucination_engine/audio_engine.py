@@ -46,15 +46,24 @@ class AudioAnalyzer:
         self.kick_hist = deque(maxlen=max(8, int(o["history_seconds"] * self.frame_rate)))
         self.onset_k = o["k"]
         self.onset_min_level = float(o.get("min_level", 0.35))
+        self.transient_ratio = float(o.get("transient_ratio", 0.25))
         self.refractory = o["refractory_ms"] / 1000.0
         b = a["big_onset"]
         self.rms_hist = deque(maxlen=max(8, int(b["history_seconds"] * self.frame_rate)))
         self.big_k = b["k"]
         self.big_refractory = b["refractory_ms"] / 1000.0
+        so = a.get("synth_onset", {})
+        self.synth_hist = deque(maxlen=max(8, int(so.get("history_seconds", 6.0)
+                                                  * self.frame_rate)))
+        self.synth_k = float(so.get("k", 3.5))
+        self.synth_refractory = so.get("refractory_ms", 1500) / 1000.0
+        self.synth_min_level = float(so.get("min_level", 0.5))
         self.last_kick_t = -10.0
         self.last_big_t = -10.0
+        self.last_synth_t = -10.0
         self.kick_onset_id = 0
         self.big_onset_id = 0
+        self.synth_onset_id = 0
         self.kick_velocity = 0.0
 
         tn = cfg.get("tension", {})
@@ -103,10 +112,12 @@ class AudioAnalyzer:
 
         # buildup tension: grows while kicks are absent but the music stays loud
         # (riser); collapses on the drop. Computed BEFORE onset detection so the
-        # returning kick sees the accumulated tension.
+        # returning kick sees the accumulated tension. A kickless breakdown with
+        # only a bassline can dip below min_rms while still feeling loud, so the
+        # kick-band level (which the bass fills) counts as loudness too.
         drought = now - self.last_kick_t
         target = 0.0
-        if rms_n > self.tn_min_rms:
+        if max(rms_n, normed["kick"]) > self.tn_min_rms:
             target = min(max((drought - self.tn_start)
                              / max(self.tn_full - self.tn_start, 0.1), 0.0), 1.0)
         coef = 0.98 if target > self.tension else 0.90
@@ -114,12 +125,25 @@ class AudioAnalyzer:
 
         # kick gate: rising broadband noise (risers) puts energy in the kick band
         # and fools the adaptive threshold - a real kick is also LOUD in absolute
-        # self-calibrated terms
+        # self-calibrated terms, and TRANSIENT: its band magnitude jumps in one
+        # frame (high flux/mag), where a sustained bassline is tonal (low flux/
+        # mag). Without the transient gate a kickless breakdown with a bassline
+        # keeps resetting last_kick_t and tension never builds.
+        kick_flux = float(flux[self.band_bins["kick"]].sum())
         kick_onset = self._detect(raw["kick"], now, self.kick_hist, self.onset_k,
                                   self.refractory, "kick",
-                                  gate=normed["kick"] >= self.onset_min_level)
+                                  gate=(normed["kick"] >= self.onset_min_level
+                                        and kick_flux > self.transient_ratio
+                                        * raw["kick"]))
         big_onset = self._detect(rms, now, self.rms_hist, self.big_k,
                                  self.big_refractory, "big")
+        # synth novelty: a lead/stab arriving after relative quiet in the synth
+        # band - flux-based so sustained pads don't fire it, long refractory so
+        # it marks entrances, not every note
+        synth_onset = self._detect(float(flux[self.band_bins["synth"]].sum()),
+                                   now, self.synth_hist, self.synth_k,
+                                   self.synth_refractory, "synth",
+                                   gate=normed["synth"] >= self.synth_min_level)
         # forced drop from the control app (space bar) - full drop path, decent
         # power even with no buildup banked
         forced_drop = self.controls.drop_request != self._drop_req_seen
@@ -138,7 +162,7 @@ class AudioAnalyzer:
         self.bus.publish(AudioState(
             kick=env["kick"], perc=env["perc"], synth=env["synth"], air=env["air"],
             kick_onset=kick_onset, kick_velocity=self.kick_velocity,
-            big_onset=big_onset, rms=rms_n,
+            big_onset=big_onset, synth_onset=synth_onset, rms=rms_n,
             bpm=self.bpm,
             beat_phase=bp % 1.0,
             bar_phase=(bp % 4.0) / 4.0,
@@ -148,7 +172,7 @@ class AudioAnalyzer:
             timestamp=time.monotonic(),
             tension=self.tension, drop=drop, drop_power=self.drop_power,
             kick_onset_id=self.kick_onset_id, big_onset_id=self.big_onset_id,
-            drop_id=self.drop_id,
+            synth_onset_id=self.synth_onset_id, drop_id=self.drop_id,
         ))
 
     def _detect(self, x, now, hist, k, refractory, kind, gate=True):
@@ -158,13 +182,17 @@ class AudioAnalyzer:
             m = float(h.mean())
             sd_ = float(h.std())
             thresh = m + k * sd_
-            last = self.last_kick_t if kind == "kick" else self.last_big_t
+            last = {"kick": self.last_kick_t, "big": self.last_big_t,
+                    "synth": self.last_synth_t}[kind]
             if x > thresh and (now - last) >= refractory:
                 onset = True
                 if kind == "kick":
                     self.last_kick_t = now
                     self.kick_onset_id += 1
                     self.kick_velocity = float(np.clip((x - thresh) / (3.0 * sd_ + 1e-9), 0.0, 1.0))
+                elif kind == "synth":
+                    self.last_synth_t = now
+                    self.synth_onset_id += 1
                 else:
                     self.last_big_t = now
                     self.big_onset_id += 1
@@ -177,13 +205,15 @@ class AudioAnalyzer:
             if len(self.onset_times) >= 4:
                 d = np.diff(np.asarray(self.onset_times))
                 d = d[(d > 0.25) & (d < 2.0)]
-                if len(d) >= 3:
-                    # fold EACH interval into range BEFORE averaging: missed kicks
-                    # give 2-beat gaps, and a median over mixed octaves lands
-                    # between harmonics (fold then clamps it to min_bpm - this is
-                    # how a 143 BPM mix decayed to a stuck 127)
-                    bpms = np.array([fold_bpm(60.0 / x, self.bpm_lo, self.bpm_hi)
-                                     for x in d])
+                # fold EACH interval into range BEFORE averaging: missed kicks
+                # give 2-beat gaps, and a median over mixed octaves lands
+                # between harmonics (fold then clamps it to min_bpm - this is
+                # how a 143 BPM mix decayed to a stuck 127). strict: gaps that
+                # CAN'T fold (syncopation) are discarded, never clamped in.
+                folded = (fold_bpm(60.0 / x, self.bpm_lo, self.bpm_hi,
+                                   strict=True) for x in d)
+                bpms = np.array([b for b in folded if b is not None])
+                if len(bpms) >= 3:
                     med = float(np.median(bpms))
                     good = bpms[np.abs(bpms - med) <= 3.0]
                     # incoherent window (fills, syncopation) -> keep current BPM

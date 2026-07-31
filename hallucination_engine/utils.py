@@ -34,8 +34,12 @@ class AdaptiveNormalizer:
         return min(x / self.peak, 1.0)
 
 
-def fold_bpm(bpm: float, lo: float, hi: float) -> float:
-    """Double/halve into [lo, hi]; bounded iterations, clamp as last resort."""
+def fold_bpm(bpm: float, lo: float, hi: float, strict: bool = False):
+    """Double/halve into [lo, hi]. Non-octave harmonics (0.75x/1.25x/1.5x beat
+    gaps from syncopation) can never fold in: strict=True returns None for
+    them - clamping them to a band edge fabricates tempo evidence and drags
+    the tracker toward the bound (a 130 mix read ~140 from exactly this).
+    strict=False clamps as a last resort (tap tempo wants an answer)."""
     for _ in range(6):
         if bpm < lo:
             bpm *= 2.0
@@ -43,7 +47,7 @@ def fold_bpm(bpm: float, lo: float, hi: float) -> float:
             bpm /= 2.0
         else:
             return bpm
-    return clamp(bpm, lo, hi)
+    return None if strict else clamp(bpm, lo, hi)
 
 
 def slerp(a, b, t: float, dot_threshold: float = 0.9995):

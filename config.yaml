@@ -26,11 +26,19 @@ audio:
     history_seconds: 1.5
     k: 1.5                    # threshold = mean + k * std
     min_level: 0.35           # kick must also be loud in absolute normalized terms
+    transient_ratio: 0.25     # kick-band flux must exceed this fraction of the band
+                              # magnitude: kicks are transient, sustained basslines
+                              # are tonal and must not reset the tension drought
     refractory_ms: 250
   big_onset:
     history_seconds: 1.5
     k: 3.0
     refractory_ms: 1500
+  synth_onset:                # a lead/stab entering the synth band (flux-based)
+    history_seconds: 6.0
+    k: 3.5
+    min_level: 0.5
+    refractory_ms: 2000       # marks entrances, not every note
 
 tempo:
   min_bpm: 120
@@ -121,6 +129,9 @@ scenes:
   hybrid_chance: 0.0          # chance a phrase fuses TWO scenes (snakes x goth women).
                               # Fun but hybrid conditioning is weaker: ~10% more lock
                               # time. Try 0.15.
+  flavor: 0.15                # max random dose of a second scene blended into every
+                              # phrase (t ~ U(0.25,1)*flavor): the same base scene
+                              # never renders identically twice. 0 = off.
 
 tension:                      # buildup/drop detection
   drought_start: 1.2          # seconds without kick before tension starts rising
@@ -134,6 +145,8 @@ display:
   pulse_amount: 0.06          # kick inhale
   chroma_kick_px: 4.0
   chroma_big_px: 6.0
+  synth_fx: 1.0               # synth-entrance reaction amount (random per event:
+                              # hue jolt / chroma bloom / trail flush). 0 = off.
   trail_base: 0.25
   trail_synth: 0.35
   trail_decay: 0.94

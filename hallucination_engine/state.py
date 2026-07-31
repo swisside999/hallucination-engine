@@ -13,6 +13,7 @@ class AudioState:
     kick_onset: bool = False
     kick_velocity: float = 0.0
     big_onset: bool = False
+    synth_onset: bool = False  # a lead/stab entering after quiet in the synth band
     rms: float = 0.0
     bpm: float = 130.0
     beat_phase: float = 0.0
@@ -25,6 +26,7 @@ class AudioState:
     drop_power: float = 0.0   # tension at the moment the last drop fired
     kick_onset_id: int = 0
     big_onset_id: int = 0
+    synth_onset_id: int = 0
     drop_id: int = 0
 
 
@@ -48,18 +50,23 @@ class Consumer:
         self.bus = bus
         self._kick_id = 0
         self._big_id = 0
+        self._synth_id = 0
         self._drop_id = 0
 
     def read(self) -> AudioState:
         s = self.bus.read()
         kick = s.kick_onset_id != self._kick_id
         big = s.big_onset_id != self._big_id
+        synth = s.synth_onset_id != self._synth_id
         drop = s.drop_id != self._drop_id
         self._kick_id = s.kick_onset_id
         self._big_id = s.big_onset_id
+        self._synth_id = s.synth_onset_id
         self._drop_id = s.drop_id
-        if kick != s.kick_onset or big != s.big_onset or drop != s.drop:
-            s = replace(s, kick_onset=kick, big_onset=big, drop=drop)
+        if (kick != s.kick_onset or big != s.big_onset
+                or synth != s.synth_onset or drop != s.drop):
+            s = replace(s, kick_onset=kick, big_onset=big,
+                        synth_onset=synth, drop=drop)
         return s
 
 
