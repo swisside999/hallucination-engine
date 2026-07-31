@@ -12,7 +12,11 @@ The pipeline has three layers:
 
 - **Audio brain** (~86 Hz): FFT band energies, adaptive normalizers, kick
   and big-onset detection, BPM and beat phase tracking, buildup tension and
-  drop detection.
+  drop detection. Kicks are gated on transientness (band flux vs magnitude),
+  so a kickless breakdown carried by a bassline still banks tension for the
+  drop. A separate flux detector marks synth entrances: when a lead arrives,
+  the conditioning lunges toward the next scene and the compositor fires a
+  random one-shot (hue jolt, chroma bloom or trail flush).
 - **Hallucination loop** (~4.5 fps at 512px on an M4 Pro): an SD-Turbo
   img2img feedback loop. Every output frame becomes the next input; the
   audio modulates denoise strength, noise injection, zoom, rotation and
@@ -147,6 +151,10 @@ running different logos in different timeslots.
 - Style flavors: scene stamps (each phrase opens as a prompt-faithful
   image), short phrases, hybrid two-scene fusions, spiral swirl, and an
   anti-lock boost for dark presets.
+
+Every phrase also gets a random "flavor" tint: a small dose of a second
+scene blended into the prompt embedding (`scenes.flavor`, default 0.15),
+so the same scene never renders with identical conditioning twice.
 - A preview button renders 12 seconds around your first cue at draft
   quality and plays it inline, so you can iterate before committing to the
   full render (~0.75x realtime at 512px, slower at higher sizes).

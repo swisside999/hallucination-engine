@@ -32,10 +32,42 @@ def kick_noise_amp(state, dcfg):
     return dcfg["noise_base"] + state.kick_velocity * dcfg["noise_kick_scale"]
 
 
+class KickPulse:
+    """Onset-locked pulse envelope for the visual inhale. The kick BAND
+    envelope also rises on offbeat bass stabs (same 20-120 Hz), which lands
+    the pulse between kicks on techno; kick onsets are transient-gated, so
+    driving the pulse from them locks it to actual kicks. The detector still
+    drops the odd kick (bass sustaining under it dilutes the flux ratio), so
+    a beat-clock fill covers a missed kick - but only while kicks flow: after
+    ~1.8 kickless beats the fill stops, breakdowns must not keep pulsing."""
+
+    def __init__(self):
+        self.env = 0.0
+        self._since_kick = 999.0
+        self._prev_phase = 0.0
+        self._last_hit = 0.6
+
+    def step(self, state, dt):
+        self._since_kick += dt
+        if state.kick_onset:
+            self._since_kick = 0.0
+            self._last_hit = 0.35 + 0.65 * state.kick_velocity
+            self.env = max(self.env, self._last_hit)
+        else:
+            beat = 60.0 / max(state.bpm, 1.0)
+            # window covers a double miss; fill matches recent kick energy -
+            # a visibly softer fill reads as a skipped kick too
+            if (state.beat_phase < self._prev_phase          # beat-grid boundary
+                    and 0.5 * beat < self._since_kick < 3.2 * beat):
+                self.env = max(self.env, 0.9 * self._last_hit)
+            self.env *= math.exp(-dt / 0.13)
+        self._prev_phase = state.beat_phase
+        return self.env
+
+
 def shader_params(state, disp, big_env):
     tn = state.tension
     return {
-        "pulse": state.kick,
         "chroma": (state.kick * disp["chroma_kick_px"] + big_env * disp["chroma_big_px"]
                    + tn * disp.get("chroma_tension_px", 3.0)),  # rising unease
         "trail_amount": (disp["trail_base"] + state.synth * disp["trail_synth"])

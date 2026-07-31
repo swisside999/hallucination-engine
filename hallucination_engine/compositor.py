@@ -61,6 +61,9 @@ class Compositor:
         self.frame_counter = -1
         self.big_env = 0.0
         self.drop_env = 0.0
+        self.kick_pulse = mappings.KickPulse()
+        self.synth_env = 0.0
+        self.synth_fx = 0   # effect drawn per synth entrance: hue jolt/chroma/trail flush
         self.hue = 0.0
         self.disp_fps = 60.0
         self._want_save = False
@@ -183,6 +186,15 @@ class Compositor:
             self.big_env = 1.0
         else:
             self.big_env *= math.exp(-dt / 0.15)
+        # synth entrance: draw a random effect so the reaction never repeats -
+        # 0 = hue jolt (instant), 1 = chroma bloom, 2 = trail flush (crisp cut)
+        if s.synth_onset:
+            self.synth_env = 1.0
+            self.synth_fx = self._rng.randrange(3)
+            if self.synth_fx == 0:
+                self.hue = (self.hue + self._rng.uniform(1.0, 2.6)) % (2 * math.pi)
+        else:
+            self.synth_env *= math.exp(-dt / 0.4)
         if s.drop:
             self.drop_env = 1.0
             self._drop_tau = 0.25 + 0.5 * s.drop_power  # bigger buildup, longer burst
@@ -193,6 +205,12 @@ class Compositor:
         else:
             self.drop_env *= math.exp(-dt / getattr(self, "_drop_tau", 0.25))
         p = mappings.shader_params(s, self.disp, self.big_env)
+        fx = self.disp.get("synth_fx", 1.0) * self.synth_env
+        if fx > 0.01:
+            if self.synth_fx == 1:
+                p["chroma"] += 5.0 * fx          # chroma bloom on the entrance
+            elif self.synth_fx == 2:
+                p["trail_amount"] *= 1.0 - 0.8 * fx  # cut trails: sudden clarity
         self.hue = (self.hue + p["hue_rate"] * dt) % (2 * math.pi)
         strobe = 0.0
         if self.disp["enable_strobe"]:
@@ -211,7 +229,7 @@ class Compositor:
             "u_resolution": (float(self.fb_size[0]), float(self.fb_size[1])),
             "u_time": t,
             "u_blend": self.blend,
-            "u_pulse": s.kick,
+            "u_pulse": self.kick_pulse.step(s, dt),
             "u_pulse_amount": self.disp["pulse_amount"],
             "u_chroma_px": p["chroma"],
             "u_trail_amount": p["trail_amount"],

@@ -152,6 +152,9 @@ class OfflineRenderer:
         # FX-layer state (mirrors Compositor._frame on the virtual clock)
         rng = random.Random(7)
         big_env = drop_env = hue = 0.0
+        kick_pulse = mappings.KickPulse()
+        synth_env = 0.0
+        synth_fx = 0
         drop_tau = 0.25
         strobe_until = -1.0
         frame_counter = -1
@@ -257,6 +260,13 @@ class OfflineRenderer:
                         big_env = 1.0
                     else:
                         big_env *= math.exp(-dt / 0.15)
+                    if s.synth_onset:
+                        synth_env = 1.0
+                        synth_fx = rng.randrange(3)
+                        if synth_fx == 0:
+                            hue = (hue + rng.uniform(1.0, 2.6)) % (2 * math.pi)
+                    else:
+                        synth_env *= math.exp(-dt / 0.4)
                     if s.drop:
                         drop_env = 1.0
                         drop_tau = 0.25 + 0.5 * s.drop_power
@@ -266,6 +276,12 @@ class OfflineRenderer:
                     else:
                         drop_env *= math.exp(-dt / drop_tau)
                     p = mappings.shader_params(s, self.disp, big_env)
+                    fx = self.disp.get("synth_fx", 1.0) * synth_env
+                    if fx > 0.01:
+                        if synth_fx == 1:
+                            p["chroma"] += 5.0 * fx
+                        elif synth_fx == 2:
+                            p["trail_amount"] *= 1.0 - 0.8 * fx
                     hue = (hue + p["hue_rate"] * dt) % (2 * math.pi)
                     strobe = 0.0
                     if self.disp["enable_strobe"]:
@@ -281,7 +297,7 @@ class OfflineRenderer:
                         "u_resolution": (float(self.size), float(self.size)),
                         "u_time": t,
                         "u_blend": blend,
-                        "u_pulse": s.kick,
+                        "u_pulse": kick_pulse.step(s, dt),
                         "u_pulse_amount": self.disp["pulse_amount"],
                         "u_chroma_px": p["chroma"],
                         "u_trail_amount": p["trail_amount"],
