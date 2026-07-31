@@ -32,6 +32,7 @@ class DiffusionEngine(threading.Thread):
         self.current_strength = float(self.dcfg["strength_base"])
         self._seen_reset = 0
         self._rng = np.random.default_rng()
+        self._synth_jolt = 0.0  # decaying shimmer boost after a synth entrance
         # live preset switch: old bank kept for the crossfade window
         self._old_bank = None
         self._fade_t0 = None
@@ -104,7 +105,8 @@ class DiffusionEngine(threading.Thread):
         # module refs, not import-time copies: a --preset load rebinds NEGATIVE
         self.bank = PromptBank(pipe, prompts.SCENES, prompts.NEGATIVE, self.device,
                                shuffle=self.scfg.get("shuffle", True),
-                               hybrid_chance=self.scfg.get("hybrid_chance", 0.3))
+                               hybrid_chance=self.scfg.get("hybrid_chance", 0.3),
+                               flavor=self.scfg.get("flavor", 0.15))
         # launch-time snapshot of the preset-overridable sections, so a live
         # preset switch can revert one preset's overrides before applying the
         # next - overrides must never leak between presets
@@ -374,7 +376,8 @@ class DiffusionEngine(threading.Thread):
             bank = PromptBank(self.pipe, prompts.SCENES, prompts.NEGATIVE,
                               self.device,
                               shuffle=self.scfg.get("shuffle", True),
-                              hybrid_chance=self.scfg.get("hybrid_chance", 0.3))
+                              hybrid_chance=self.scfg.get("hybrid_chance", 0.3),
+                              flavor=self.scfg.get("flavor", 0.15))
             self._old_bank = self.bank
             self._fade_t0 = None
             self.bank = bank
@@ -443,7 +446,13 @@ class DiffusionEngine(threading.Thread):
         if forced is None and t < self._rampage_until:
             strength = max(strength, dr.get("rampage_strength", 0.62))
         self.current_strength = strength
-        emb = self.bank.get(s.phrase_index, s.phrase_phase, s.synth,
+        # a synth entrance shoves the conditioning toward the next scene for
+        # about a second - the image visibly morphs when a new lead arrives
+        if s.synth_onset:
+            self._synth_jolt = 1.0
+        shimmer_drive = min(s.synth + self._synth_jolt, 1.5)
+        self._synth_jolt *= 0.82
+        emb = self.bank.get(s.phrase_index, s.phrase_phase, shimmer_drive,
                             self.scfg["blend_start"], self.scfg["shimmer"])
         if self._old_bank is not None:  # live preset switch: crossfade banks
             if self._fade_t0 is None:
@@ -453,7 +462,8 @@ class DiffusionEngine(threading.Thread):
                 self._old_bank = None
                 self._fade_t0 = None
             else:
-                old = self._old_bank.get(s.phrase_index, s.phrase_phase, s.synth,
+                old = self._old_bank.get(s.phrase_index, s.phrase_phase,
+                                         shimmer_drive,
                                          self.scfg["blend_start"],
                                          self.scfg["shimmer"])
                 emb = prompts.slerp(old, emb, f * f * (3.0 - 2.0 * f))

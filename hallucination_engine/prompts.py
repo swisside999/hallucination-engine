@@ -169,7 +169,8 @@ def load_preset(name_or_path):
 class PromptBank:
     """Encodes all scenes once at startup; per-frame conditioning is pure tensor math."""
 
-    def __init__(self, pipe, scenes, negative, device, shuffle=True, hybrid_chance=0.0):
+    def __init__(self, pipe, scenes, negative, device, shuffle=True,
+                 hybrid_chance=0.0, flavor=0.15):
         import random
         import threading
         import torch
@@ -177,7 +178,8 @@ class PromptBank:
         self.scenes = scenes
         self.shuffle = shuffle
         self.hybrid_chance = hybrid_chance
-        self._order = [0]           # walk entries: scene id, or (i, j) hybrid pair
+        self.flavor = flavor        # max dose of a random second scene per phrase
+        self._order = [0]           # walk entries: scene id, or (i, j, t) blend
         self._rng = random.Random()
         self._lock = threading.Lock()
         with torch.inference_mode():
@@ -190,8 +192,11 @@ class PromptBank:
         return emb.float()
 
     def _entry(self, phrase_index: int):
-        """phrase counter -> walk entry (scene id or hybrid pair). Weighted-random
-        but deterministic within a run, so the diffusion thread and the HUD agree."""
+        """phrase counter -> walk entry: scene id, or an (i, j, t) blend. Weighted-
+        random but deterministic within a run, so the diffusion thread and the HUD
+        agree. Hybrids fuse two scenes near the middle; every other phrase gets a
+        small random "flavor" dose of a second scene, so the same base scene never
+        renders with identical conditioning twice."""
         if not self.shuffle:
             return phrase_index % len(self.scenes)
         n = len(self.scenes)
@@ -199,13 +204,18 @@ class PromptBank:
         with self._lock:
             while len(self._order) <= phrase_index + 1:
                 prev = self._order[-1]
-                prev_ids = set(prev) if isinstance(prev, tuple) else {prev}
+                prev_ids = (set(prev[:2]) if isinstance(prev, tuple) else {prev})
                 w = [0.0 if k in prev_ids else weights[k] for k in range(n)]
                 i = self._rng.choices(range(n), weights=w)[0]
-                if self._rng.random() < self.hybrid_chance:
-                    w[i] = 0.0
+                w[i] = 0.0
+                if n > 1 and self._rng.random() < self.hybrid_chance:
                     j = self._rng.choices(range(n), weights=w)[0]
-                    self._order.append((i, j))   # hybrid phrase: two scenes fused
+                    t = self._rng.uniform(0.35, 0.65)   # hybrid: two scenes fused
+                    self._order.append((i, j, t))
+                elif n > 1 and self.flavor > 0.0:
+                    j = self._rng.choices(range(n), weights=w)[0]
+                    t = self._rng.uniform(0.25, 1.0) * self.flavor  # subtle tint
+                    self._order.append((i, j, t))
                 else:
                     self._order.append(i)
             return self._order[phrase_index]
@@ -227,7 +237,8 @@ class PromptBank:
 
     def _embed_of(self, entry):
         if isinstance(entry, tuple):
-            return slerp(self.embeds[entry[0]], self.embeds[entry[1]], 0.5)
+            i, j, t = entry
+            return slerp(self.embeds[i], self.embeds[j], t)
         return self.embeds[entry]
 
     def scene_index(self, phrase_index: int) -> int:
@@ -236,8 +247,10 @@ class PromptBank:
 
     def scene_label(self, phrase_index: int) -> str:
         e = self._entry(phrase_index)
-        if isinstance(e, tuple):
+        if isinstance(e, tuple) and e[2] >= 0.3:  # true hybrid; flavor stays quiet
             return f"{self.scenes[e[0]][:24]} x {self.scenes[e[1]][:24]}"
+        if isinstance(e, tuple):
+            e = e[0]
         return self.scenes[e]
 
     def get(self, phrase_index: int, phrase_phase: float, synth: float,
