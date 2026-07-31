@@ -64,6 +64,10 @@ struct Stats: Decodable {
     var noise: Double = 0
     var logo: Double = 0
     var logoOpacity: Double = 0
+    var clip: Double = 0
+    var outBlack: Double = 0
+    var outContrast: Double = 1
+    var outSat: Double = 1
 
     enum CodingKeys: String, CodingKey {
         case bpm, beatPhase, phrasePhase, phraseIndex, scene, sceneId, sceneNext
@@ -71,6 +75,7 @@ struct Stats: Decodable {
         case fpsDiff, fpsDisp, pos, dur, stripe, grid, lockedPct
         case drops, resets, frames, cpuPct, rssMb, uptime
         case trail, strobe, zoom, noise, logo, logoOpacity
+        case clip, outBlack, outContrast, outSat
     }
 
     init(from decoder: Decoder) throws {
@@ -88,7 +93,10 @@ struct Stats: Decodable {
         frames = i(.frames); cpuPct = d(.cpuPct); rssMb = d(.rssMb)
         uptime = d(.uptime); trail = d(.trail); strobe = d(.strobe)
         zoom = d(.zoom); noise = d(.noise); logo = d(.logo)
-        logoOpacity = d(.logoOpacity)
+        logoOpacity = d(.logoOpacity); clip = d(.clip)
+        outBlack = d(.outBlack)
+        outContrast = (try? c.decodeIfPresent(Double.self, forKey: .outContrast)) ?? 1
+        outSat = (try? c.decodeIfPresent(Double.self, forKey: .outSat)) ?? 1
     }
 }
 

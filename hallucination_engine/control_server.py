@@ -111,6 +111,7 @@ class ControlServer(threading.Thread):
             "tension": s.tension,
             "kick": s.kick, "perc": s.perc, "synth": s.synth, "air": s.air,
             "rms": s.rms,
+            "clip": s.clip,
             "fps_diff": float(getattr(eng, "diff_fps", 0.0) or (1.0 / period if period > 0 else 0.0)),
             "fps_disp": float(getattr(self.compositor, "disp_fps", 0.0)) if self.compositor else 0.0,
             "pos": float(getattr(self.audio, "position", 0.0)),
@@ -130,6 +131,9 @@ class ControlServer(threading.Thread):
             "strobe": float(self.cfg["display"]["strobe_intensity"]),
             "zoom": float(self.cfg["diffusion"]["zoom_base"]),
             "noise": float(self.cfg["diffusion"]["noise_idle"]),
+            "out_black": float(self.cfg["display"].get("out_black", 0.0)),
+            "out_contrast": float(self.cfg["display"].get("out_contrast", 1.0)),
+            "out_sat": float(self.cfg["display"].get("out_sat", 1.0)),
         }
 
     # ------------------------------------------------------------- commands

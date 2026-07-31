@@ -150,6 +150,9 @@ display:
   chroma_big_px: 6.0
   synth_fx: 1.0               # synth-entrance reaction amount (random per event:
                               # hue jolt / chroma bloom / trail flush). 0 = off.
+  out_black: 0.0              # LED output tone curve, DISPLAY-ONLY (never enters
+  out_contrast: 1.0           # the feedback loop). Tune at soundcheck on the
+  out_sat: 1.0                # actual panel: crush blacks (-), trim saturation.
   trail_base: 0.25
   trail_synth: 0.35
   trail_decay: 0.94

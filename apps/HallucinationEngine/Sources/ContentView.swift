@@ -116,6 +116,16 @@ struct LiveView: View {
         ScrollView {
             VStack(spacing: 12) {
                 TransportBar()
+                if engine.inputSilent {
+                    HStack(spacing: 8) {
+                        Circle().fill(HE.danger).frame(width: 8, height: 8)
+                        Text("INPUT SILENT - check cable / interface (engine is retrying)")
+                            .font(HE.label).foregroundStyle(HE.danger)
+                        Spacer()
+                    }
+                    .padding(10)
+                    .background(HE.danger.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                }
                 HeaderView()
                 HStack(spacing: 12) {
                     SceneCard(showBank: $showBank)
@@ -345,7 +355,16 @@ struct MetersView: View {
         let s = engine.stats
         Panel {
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(text: "SPECTRUM")
+                HStack {
+                    SectionLabel(text: "SPECTRUM")
+                    Spacer()
+                    // ADC clip: hot booth line level mushes every band
+                    Circle()
+                        .fill((s?.clip ?? 0) > 0.001 ? HE.danger : HE.hairline)
+                        .frame(width: 8, height: 8)
+                    Text("CLIP").font(HE.micro)
+                        .foregroundStyle((s?.clip ?? 0) > 0.001 ? HE.danger : HE.textFaint)
+                }
                 HStack(alignment: .bottom, spacing: 18) {
                     // 3-band EQ loudness: the engine's band envelopes
                     HStack(spacing: 12) {
@@ -392,6 +411,9 @@ struct KnobsView: View {
     @State private var strobe = 0.45
     @State private var zoom = 0.004
     @State private var noise = 0.03
+    @State private var outBlack = 0.0
+    @State private var outContrast = 1.0
+    @State private var outSat = 1.0
     @State private var dragging: String? = nil
 
     var body: some View {
@@ -403,7 +425,22 @@ struct KnobsView: View {
                 knob("STROBE", $strobe, 0...0.8) { engine.setParam("display.strobe_intensity", $0) }
                 knob("ZOOM", $zoom, 0...0.015) { engine.setParam("diffusion.zoom_base", $0) }
                 knob("NOISE", $noise, 0...0.08) { engine.setParam("diffusion.noise_idle", $0) }
+                SectionLabel(text: "LED OUT")
+                    .padding(.top, 4)
+                    .help("display-only output tone curve - tune on the actual panel at soundcheck")
+                knob("BLACK", $outBlack, -0.2...0.2) { engine.setParam("display.out_black", $0) }
+                knob("CONTRAST", $outContrast, 0.7...1.5) { engine.setParam("display.out_contrast", $0) }
+                knob("SAT", $outSat, 0.5...1.2) { engine.setParam("display.out_sat", $0) }
             }
+        }
+        .onChange(of: engine.stats?.outBlack) { _, v in
+            if dragging != "BLACK", let v { outBlack = v }
+        }
+        .onChange(of: engine.stats?.outContrast) { _, v in
+            if dragging != "CONTRAST", let v { outContrast = v }
+        }
+        .onChange(of: engine.stats?.outSat) { _, v in
+            if dragging != "SAT", let v { outSat = v }
         }
         .onChange(of: engine.stats?.offset) { _, v in
             if dragging != "STRENGTH", let v { offset = v }

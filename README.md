@@ -97,6 +97,17 @@ For live input (DJ software, a mixer, anything the Mac can hear):
    every audio input as a microphone, BlackHole included; without the grant
    the engine reads silent zeros and the spectrum stays flat.
 
+Live input is club-hardened: a flatlined or dead stream (cable bump,
+interface hiccup) is detected within seconds and reopened, re-resolving the
+device by name since indices shift when hardware re-enumerates. The app
+shows an INPUT SILENT banner and a CLIP indicator for hot booth levels,
+holds the Mac awake while the engine runs, and a watchdog restarts a hung
+engine after 10 s of frozen stats. An output tone curve (black level,
+contrast, saturation) lives in the LED OUT sliders - display-only, it never
+enters the feedback loop - for taming a bright LED wall at soundcheck.
+`tools/soak_12h.py mix.mp3` runs an overnight soak and reports memory
+growth, fps floor and thermal throttling before a long set does.
+
 ## The control app
 
 A native SwiftUI cockpit lives in `apps/HallucinationEngine`. No Xcode

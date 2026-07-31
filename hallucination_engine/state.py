@@ -14,6 +14,7 @@ class AudioState:
     kick_velocity: float = 0.0
     big_onset: bool = False
     synth_onset: bool = False  # a lead/stab entering after quiet in the synth band
+    clip: float = 0.0          # fraction of near-full-scale input samples (ADC clipping)
     rms: float = 0.0
     bpm: float = 130.0
     beat_phase: float = 0.0

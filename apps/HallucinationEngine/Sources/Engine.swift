@@ -1,6 +1,7 @@
 import AppKit
 import CryptoKit
 import Foundation
+import IOKit.pwr_mgt
 import Network
 import SwiftUI
 
@@ -19,6 +20,10 @@ final class Engine: ObservableObject {
     @Published var liveDevice: String = ""   // empty = file mode
     @Published var autoRestart = true
     @Published var restarts = 0
+    @Published var inputSilent = false   // live input flatlined (cable/interface)
+    private var lastAudioAt = Date.distantPast
+    private var watchdog: Timer?
+    private var sleepAssertions: [IOPMAssertionID] = []
 
     // render mode
     @Published var renderRunning = false
@@ -156,6 +161,11 @@ final class Engine: ObservableObject {
             process = p
             running = true
             startedAt = Date()
+            statsAt = .distantPast   // watchdog arms on the first frame of THIS run
+            lastAudioAt = Date()
+            inputSilent = false
+            holdAwake()
+            startWatchdog()
             log("engine started (pid \(p.processIdentifier))")
             connectSoon(delay: 2.0)
         } catch {
@@ -169,6 +179,10 @@ final class Engine: ObservableObject {
         conn?.cancel()
         conn = nil
         stats = nil
+        watchdog?.invalidate()
+        watchdog = nil
+        releaseAwake()
+        inputSilent = false
         log("engine exited (status \(status))")
         // 8-hour-set insurance: relaunch on unexpected death, but never crash-loop
         if autoRestart, !userStopped, Date().timeIntervalSince(startedAt) > 30 {
@@ -176,6 +190,52 @@ final class Engine: ObservableObject {
             log("auto-restarting engine ...")
             launch()
         }
+    }
+
+    // ------------------------------------------------------- club failsafes
+
+    /// Hang recovery: a crashed engine triggers processEnded, but a HUNG one
+    /// (process alive, stats frozen) would leave a black wall until someone
+    /// notices. Stats silent for 10 s after having flowed = kill it and let
+    /// the auto-restart path bring it back. Gated on the same toggle.
+    private func startWatchdog() {
+        watchdog?.invalidate()
+        watchdog = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.watchdogTick() }
+        }
+    }
+
+    private func watchdogTick() {
+        guard running, !userStopped, autoRestart,
+              statsAt != .distantPast,                       // first frame seen
+              Date().timeIntervalSince(statsAt) > 10 else { return }
+        log("watchdog: stats silent 10 s, engine hung - killing for restart")
+        let p = process
+        p?.terminate()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            if let p, p.isRunning { kill(p.processIdentifier, SIGKILL) }
+        }
+    }
+
+    /// A 12 h set must survive lid dimming and idle sleep without depending
+    /// on someone remembering a menu-bar app. Held while the engine runs.
+    private func holdAwake() {
+        releaseAwake()
+        for type in [kIOPMAssertionTypeNoDisplaySleep,
+                     kIOPMAssertionTypePreventUserIdleSystemSleep] {
+            var id = IOPMAssertionID(0)
+            if IOPMAssertionCreateWithName(type as CFString,
+                                           IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                           "Hallucination Engine live set" as CFString,
+                                           &id) == kIOReturnSuccess {
+                sleepAssertions.append(id)
+            }
+        }
+    }
+
+    private func releaseAwake() {
+        for id in sleepAssertions { IOPMAssertionRelease(id) }
+        sleepAssertions = []
     }
 
     func stop() {
@@ -258,7 +318,16 @@ final class Engine: ObservableObject {
         } else if type == "stats" {
             let dec = JSONDecoder()
             dec.keyDecodingStrategy = .convertFromSnakeCase
-            if let s = try? dec.decode(Stats.self, from: line) { stats = s; statsAt = Date() }
+            if let s = try? dec.decode(Stats.self, from: line) {
+                stats = s
+                statsAt = Date()
+                // live-input flatline banner (cable bump, interface hiccup):
+                // the engine reopens the stream itself, this is the loud warning
+                if !liveDevice.isEmpty {
+                    if s.rms > 0.0005 { lastAudioAt = Date() }
+                    inputSilent = Date().timeIntervalSince(lastAudioAt) > 5
+                }
+            }
             applyLogoSchedule()
         }
     }

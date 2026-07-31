@@ -18,10 +18,21 @@ SHADER_DIR = Path(__file__).parent / "shaders"
 HUD_W, HUD_H = 560, 236
 
 COPY_FRAG = """#version 330 core
+// screen blit + output tone curve. Display-only by design: the tone curve
+// must NEVER enter the feedback texture or the servo would fight it.
 uniform sampler2D u_tex;
+uniform float u_out_black;     // signed black shift: <0 crush, >0 lift (0 = neutral)
+uniform float u_out_contrast;  // around mid-gray (1 = neutral)
+uniform float u_out_sat;       // saturation trim for hot LED walls (1 = neutral)
 in vec2 v_uv;
 out vec4 f_color;
-void main() { f_color = vec4(texture(u_tex, v_uv).rgb, 1.0); }
+void main() {
+    vec3 c = texture(u_tex, v_uv).rgb;
+    c = (c - 0.5) * u_out_contrast + 0.5 + u_out_black;
+    float l = dot(c, vec3(0.299, 0.587, 0.114));
+    c = clamp(mix(vec3(l), c, u_out_sat), 0.0, 1.0);
+    f_color = vec4(c, 1.0);
+}
 """
 
 HUD_VERT = """#version 330 core
@@ -73,6 +84,7 @@ class Compositor:
         self.panel = None
         self._fs_seen = 0
         self._cap_seen = 0
+        self._refullscreen_t = None
 
     # ------------------------------------------------------------------ run
 
@@ -91,6 +103,7 @@ class Compositor:
         glfw.make_context_current(self.win)
         glfw.swap_interval(1)
         glfw.set_key_callback(self.win, self._on_key)
+        glfw.set_monitor_callback(self._on_monitor_event)
         self.ctx = moderngl.create_context()
 
         vert = (SHADER_DIR / "composite.vert").read_text()
@@ -173,6 +186,9 @@ class Compositor:
             self._want_save = True
         if c.quit_request:
             glfw.set_window_should_close(self.win, True)
+        if self._refullscreen_t and time.monotonic() >= self._refullscreen_t:
+            self._refullscreen_t = None
+            self._refullscreen()
 
         frame, counter, period = self.slot.get()
         if frame is not None and counter != self.frame_counter:
@@ -256,9 +272,12 @@ class Compositor:
             self._want_save = False
             self._save_capture()
 
-        # copy composite to screen
+        # copy composite to screen (plus the LED output tone curve)
         self.ctx.screen.use()
         self.ctx.viewport = (0, 0, *self.fb_size)
+        self._set_uniform(self.copy_prog, "u_out_black", self.disp.get("out_black", 0.0))
+        self._set_uniform(self.copy_prog, "u_out_contrast", self.disp.get("out_contrast", 1.0))
+        self._set_uniform(self.copy_prog, "u_out_sat", self.disp.get("out_sat", 1.0))
         self.tex_dst.use(0)
         self.vao_copy.render(moderngl.TRIANGLES)
 
@@ -415,18 +434,50 @@ class Compositor:
             self.controls.bpm_override = bpm
             print(f"[tap] BPM {bpm:.1f}")
 
+    def _monitor_for_window(self):
+        """The monitor holding the window center - fullscreen goes where the
+        VJ dragged the window (the LED wall), not blindly to the primary."""
+        wx, wy = glfw.get_window_pos(self.win)
+        ww, wh = glfw.get_window_size(self.win)
+        cx, cy = wx + ww // 2, wy + wh // 2
+        for mon in glfw.get_monitors():
+            mx, my = glfw.get_monitor_pos(mon)
+            mode = glfw.get_video_mode(mon)
+            if mx <= cx < mx + mode.size.width and my <= cy < my + mode.size.height:
+                return mon
+        return glfw.get_primary_monitor()
+
     def _toggle_fullscreen(self):
         if self.fullscreen:
             glfw.set_window_monitor(self.win, None, *self._win_pos, *self._win_size, 0)
         else:
             self._win_pos = glfw.get_window_pos(self.win)
             self._win_size = glfw.get_window_size(self.win)
-            mon = glfw.get_primary_monitor()
+            mon = self._monitor_for_window()
             mode = glfw.get_video_mode(mon)
+            self._fs_monitor = glfw.get_monitor_name(mon)
             glfw.set_window_monitor(self.win, mon, 0, 0,
                                     mode.size.width, mode.size.height, mode.refresh_rate)
         self.fullscreen = not self.fullscreen
         glfw.swap_interval(1)
+
+    def _on_monitor_event(self, monitor, event):
+        # HDMI renegotiation mid-set: when a display comes back while we are
+        # fullscreen, re-apply after it settles - never leave a windowed
+        # desktop on the wall
+        if event == glfw.CONNECTED and self.fullscreen:
+            self._refullscreen_t = time.monotonic() + 1.5
+
+    def _refullscreen(self):
+        target = getattr(self, "_fs_monitor", None)
+        mons = glfw.get_monitors()
+        mon = next((m for m in mons if glfw.get_monitor_name(m) == target),
+                   None) or self._monitor_for_window()
+        mode = glfw.get_video_mode(mon)
+        glfw.set_window_monitor(self.win, mon, 0, 0,
+                                mode.size.width, mode.size.height, mode.refresh_rate)
+        glfw.swap_interval(1)
+        print("[display] re-applied fullscreen after display reconnect")
 
 
 # ------------------------------------------------------------- control panel

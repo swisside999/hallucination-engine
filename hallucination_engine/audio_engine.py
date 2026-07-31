@@ -1,6 +1,7 @@
 """Layer A - audio capture (live/file) + DSP feature extraction at ~86 Hz."""
 
 import sys
+import threading
 import time
 from collections import deque
 from math import gcd
@@ -90,6 +91,7 @@ class AudioAnalyzer:
         self._hist_decay = float(t.get("hist_decay", 0.985))
         self.beat_pos = 0.0
         self.phrase_beats = int(cfg["scenes"]["phrase_bars"]) * 4
+        self.clip = 0.0  # fraction of near-full-scale samples, ~1 s persistence
         self.t = 0.0  # sample clock, seconds
 
     def process_block(self, mono: np.ndarray):
@@ -110,6 +112,9 @@ class AudioAnalyzer:
             "air": float(mag[self.band_bins["air"]].sum()),
         }
         rms = float(np.sqrt(np.mean(mono.astype(np.float64) ** 2)))
+        # ADC clipping (hot booth line level): decays over ~1 s so the UI LED
+        # is readable; clipped input mushes every band and is invisible otherwise
+        self.clip = max(float(np.mean(np.abs(mono) >= 0.985)), self.clip * 0.97)
 
         normed = {k: self.norms[k].process(v) for k, v in raw.items()}
         env = {k: self.envs[k].process(normed[k]) for k in normed}
@@ -168,6 +173,7 @@ class AudioAnalyzer:
             kick=env["kick"], perc=env["perc"], synth=env["synth"], air=env["air"],
             kick_onset=kick_onset, kick_velocity=self.kick_velocity,
             big_onset=big_onset, synth_onset=synth_onset, rms=rms_n,
+            clip=self.clip,
             bpm=self.bpm,
             beat_phase=bp % 1.0,
             bar_phase=(bp % 4.0) / 4.0,
@@ -243,7 +249,17 @@ class AudioAnalyzer:
 
 
 class LiveAudioEngine:
-    """Analyzes the default (or --device N) input device in realtime."""
+    """Analyzes the default (or --device N) input device in realtime.
+
+    Club-failsafe: a cable bump or interface hiccup kills the input stream
+    SILENTLY (zeros forever, no error). A monitor thread watches for a dead
+    or flatlined input and reopens the stream, re-resolving the device BY
+    NAME because indices shift when hardware re-enumerates."""
+
+    FLATLINE_SECS = 5.0
+    # measured: STUDIO 2+ with nothing plugged peaks ~5e-5 (ADC floor); any
+    # music is > 1e-2. This sits 10x above the floor, 40 dB below signal.
+    SILENCE_FLOOR = 5e-4
 
     def __init__(self, cfg, bus, controls, device=None):
         self.cfg = cfg
@@ -252,11 +268,24 @@ class LiveAudioEngine:
         self.device = device if device is not None else cfg["audio"].get("device")
         self.analyzer = None
         self.stream = None
+        self.device_name = None
+        self._last_alive = time.monotonic()
+        self._closing = False
 
     def start(self):
+        self._open()
+        threading.Thread(target=self._monitor, daemon=True,
+                         name="audio-watchdog").start()
+
+    def _open(self):
         a = self.cfg["audio"]
         sr = int(a["samplerate"])
         block = int(a["blocksize"])
+        if self.device_name is not None:  # reopen: index may have shifted
+            for i, d in enumerate(sd.query_devices()):
+                if d["name"] == self.device_name and d["max_input_channels"] > 0:
+                    self.device = i
+                    break
         try:
             self.analyzer = AudioAnalyzer(self.cfg, self.bus, self.controls, samplerate=sr)
             self.stream = sd.InputStream(device=self.device, channels=1, samplerate=sr,
@@ -270,13 +299,38 @@ class LiveAudioEngine:
             self.stream = sd.InputStream(device=self.device, channels=1, samplerate=sr,
                                          blocksize=block, dtype="float32", callback=self._cb)
             self.stream.start()
-        name = sd.query_devices(self.stream.device, "input")["name"]
-        print(f"[audio] live input: {name} @ {sr} Hz")
+        self.device_name = sd.query_devices(self.stream.device, "input")["name"]
+        self._last_alive = time.monotonic()
+        print(f"[audio] live input: {self.device_name} @ {sr} Hz")
 
     def _cb(self, indata, frames, time_info, status):
-        self.analyzer.process_block(indata[:, 0].copy())
+        block = indata[:, 0]
+        if float(np.abs(block).max()) > self.SILENCE_FLOOR:
+            self._last_alive = time.monotonic()
+        self.analyzer.process_block(block.copy())
+
+    def _monitor(self):
+        while not self._closing:
+            time.sleep(1.0)
+            quiet = time.monotonic() - self._last_alive
+            if quiet < self.FLATLINE_SECS or self._closing:
+                continue
+            print(f"[audio] input silent/dead for {quiet:.0f}s - reopening "
+                  f"{self.device_name!r}", flush=True)
+            try:
+                if self.stream:
+                    self.stream.stop()
+                    self.stream.close()
+            except Exception:
+                pass
+            try:
+                self._open()
+            except Exception as e:
+                print(f"[audio] reopen failed ({e}) - retrying", flush=True)
+                self._last_alive = time.monotonic() - self.FLATLINE_SECS + 5.0
 
     def stop(self):
+        self._closing = True
         if self.stream:
             self.stream.stop()
             self.stream.close()
