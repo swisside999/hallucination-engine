@@ -33,34 +33,37 @@ def kick_noise_amp(state, dcfg):
 
 
 class KickPulse:
-    """Onset-locked pulse envelope for the visual inhale. The kick BAND
-    envelope also rises on offbeat bass stabs (same 20-120 Hz), which lands
-    the pulse between kicks on techno; kick onsets are transient-gated, so
-    driving the pulse from them locks it to actual kicks. The detector still
-    drops the odd kick (bass sustaining under it dilutes the flux ratio), so
-    a beat-clock fill covers a missed kick - but only while kicks flow: after
-    ~1.8 kickless beats the fill stops, breakdowns must not keep pulsing."""
+    """Grid-locked pulse envelope for the visual inhale. Driving the pulse
+    straight from detections is janky twice over: the kick BAND envelope
+    rises on offbeat bass stabs (same 20-120 Hz, pulses land between kicks),
+    and raw onsets flam against beat-clock fills (detections land half
+    before / half after the nudged grid line). So while kicks flow, the
+    pulse fires on every beat-grid boundary - the same phase-locked signal
+    as the HUD beat dot - at the energy of recent real kicks. Detections
+    only steer energy and the flow gate, with one exception: the FIRST kick
+    after a kickless stretch (set start, THE DROP) hits instantly, on the
+    kick itself, because the grid may not be re-anchored yet. The flow gate
+    closes after 3.2 kickless beats so breakdowns get at most a couple of
+    soft ghosts, then stay still."""
 
     def __init__(self):
         self.env = 0.0
         self._since_kick = 999.0
         self._prev_phase = 0.0
-        self._last_hit = 0.6
+        self._hit = 0.6           # EMA of real kick energy
 
     def step(self, state, dt):
+        beat = 60.0 / max(state.bpm, 1.0)
+        flowing = self._since_kick < 3.2 * beat
         self._since_kick += dt
         if state.kick_onset:
             self._since_kick = 0.0
-            self._last_hit = 0.35 + 0.65 * state.kick_velocity
-            self.env = max(self.env, self._last_hit)
-        else:
-            beat = 60.0 / max(state.bpm, 1.0)
-            # window covers a double miss; fill matches recent kick energy -
-            # a visibly softer fill reads as a skipped kick too
-            if (state.beat_phase < self._prev_phase          # beat-grid boundary
-                    and 0.5 * beat < self._since_kick < 3.2 * beat):
-                self.env = max(self.env, 0.9 * self._last_hit)
-            self.env *= math.exp(-dt / 0.13)
+            self._hit = 0.6 * self._hit + 0.4 * (0.35 + 0.65 * state.kick_velocity)
+            if not flowing:                                  # drop / set start
+                self.env = max(self.env, self._hit)
+        if state.beat_phase < self._prev_phase and flowing:  # beat-grid boundary
+            self.env = max(self.env, self._hit)
+        self.env *= math.exp(-dt / 0.13)
         self._prev_phase = state.beat_phase
         return self.env
 

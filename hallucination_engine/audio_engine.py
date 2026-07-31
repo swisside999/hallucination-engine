@@ -83,6 +83,11 @@ class AudioAnalyzer:
         self.bpm = float(t["bpm_override"] or t["default_bpm"])
         self.cfg_bpm_override = t["bpm_override"]
         self.nudge = float(t["nudge"])
+        # decaying interval histogram: evidence accumulates over minutes, so
+        # one noisy 24-onset window can't wobble the estimate (0.5 BPM bins)
+        self._hist_edges = np.arange(self.bpm_lo, self.bpm_hi + 0.5, 0.5)
+        self._bpm_hist = np.zeros(len(self._hist_edges), np.float64)
+        self._hist_decay = float(t.get("hist_decay", 0.985))
         self.beat_pos = 0.0
         self.phrase_beats = int(cfg["scenes"]["phrase_bars"]) * 4
         self.t = 0.0  # sample clock, seconds
@@ -202,23 +207,29 @@ class AudioAnalyzer:
     def _update_tempo_phase(self, dt, kick_onset, now):
         if kick_onset:
             self.onset_times.append(now)
-            if len(self.onset_times) >= 4:
-                d = np.diff(np.asarray(self.onset_times))
-                d = d[(d > 0.25) & (d < 2.0)]
-                # fold EACH interval into range BEFORE averaging: missed kicks
-                # give 2-beat gaps, and a median over mixed octaves lands
-                # between harmonics (fold then clamps it to min_bpm - this is
-                # how a 143 BPM mix decayed to a stuck 127). strict: gaps that
+            if len(self.onset_times) >= 2:
+                gap = self.onset_times[-1] - self.onset_times[-2]
+                # fold the interval into range BEFORE accumulating: missed
+                # kicks give 2-beat gaps, and mixing octaves lands between
+                # harmonics (fold then clamps it to min_bpm - this is how a
+                # 143 BPM mix decayed to a stuck 127). strict: gaps that
                 # CAN'T fold (syncopation) are discarded, never clamped in.
-                folded = (fold_bpm(60.0 / x, self.bpm_lo, self.bpm_hi,
-                                   strict=True) for x in d)
-                bpms = np.array([b for b in folded if b is not None])
-                if len(bpms) >= 3:
-                    med = float(np.median(bpms))
-                    good = bpms[np.abs(bpms - med) <= 3.0]
-                    # incoherent window (fills, syncopation) -> keep current BPM
-                    if len(good) >= 0.6 * len(bpms):
-                        self.bpm = 0.85 * self.bpm + 0.15 * float(np.median(good))
+                b = (fold_bpm(60.0 / gap, self.bpm_lo, self.bpm_hi, strict=True)
+                     if 0.25 < gap < 2.0 else None)
+                if b is not None:
+                    self._bpm_hist *= self._hist_decay
+                    self._bpm_hist[int(round((b - self.bpm_lo) / 0.5))] += 1.0
+                    peak = int(np.argmax(self._bpm_hist))
+                    if self._bpm_hist[peak] >= 4.0:  # enough accumulated evidence
+                        # parabolic interpolation for sub-bin precision
+                        lo_i, hi_i = max(peak - 1, 0), min(peak + 1,
+                                                           len(self._bpm_hist) - 1)
+                        y0, y1, y2 = (self._bpm_hist[lo_i], self._bpm_hist[peak],
+                                      self._bpm_hist[hi_i])
+                        denom = y0 - 2.0 * y1 + y2
+                        off = 0.5 * (y0 - y2) / denom if abs(denom) > 1e-9 else 0.0
+                        est = self._hist_edges[peak] + np.clip(off, -0.5, 0.5) * 0.5
+                        self.bpm = 0.9 * self.bpm + 0.1 * float(est)
         override = self.controls.bpm_override or self.cfg_bpm_override
         if override:
             self.bpm = float(override)

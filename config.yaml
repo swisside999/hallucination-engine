@@ -47,6 +47,9 @@ tempo:
   bpm_override: null          # set to force a BPM (tap tempo 'T' also overrides)
   nudge: 0.3                  # phase re-anchor fraction per kick onset
   onset_history: 24
+  hist_decay: 0.985           # BPM interval-histogram decay per kick: evidence
+                              # accumulates over minutes, a noisy window can't
+                              # wobble the estimate; lower = faster retune
 
 diffusion:
   model: stabilityai/sd-turbo
