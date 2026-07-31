@@ -89,6 +89,9 @@ For live input (DJ software, a mixer, anything the Mac can hear):
    and BlackHole 2ch checked, and set it as the system output.
 3. `python main.py --device <index>` (`--list-devices` prints the indices),
    or just pick the input by name in the app.
+4. Allow the microphone permission prompt on first launch. macOS classes
+   every audio input as a microphone, BlackHole included; without the grant
+   the engine reads silent zeros and the spectrum stays flat.
 
 ## The control app
 

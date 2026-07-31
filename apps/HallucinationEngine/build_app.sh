@@ -18,12 +18,16 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
     <key>CFBundleExecutable</key><string>HallucinationEngine</string>
     <!-- bundle id owns @AppStorage prefs (recent mixes, logo
          schedule, repo path) -->
-    <key>CFBundleIdentifier</key><string>cloud.munch.hallucination.engine</string>
+    <key>CFBundleIdentifier</key><string>io.github.swisside999.hallucination.engine</string>
     <key>CFBundleName</key><string>Hallucination Engine</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>2.0</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
+    <!-- without this key macOS silently feeds the live engine zeros
+         instead of showing the mic permission prompt -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Live mode listens to an audio loopback device (BlackHole) to drive the visuals.</string>
 </dict>
 </plist>
 EOF
