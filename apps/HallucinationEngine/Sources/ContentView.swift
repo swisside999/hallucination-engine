@@ -227,7 +227,7 @@ struct HeaderView: View {
         let s = engine.stats
         Panel {
             HStack(alignment: .center, spacing: 18) {
-                beatDot(phase: s?.beatPhase ?? 0)
+                BeatPulse(bpm: s?.bpm ?? 0, phase: s?.beatPhase ?? 0, anchor: engine.statsAt)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(String(format: "%5.1f", s?.bpm ?? 0))
                         .font(HE.mono(46, .bold))
@@ -259,11 +259,29 @@ struct HeaderView: View {
         }
     }
 
-    private func beatDot(phase: Double) -> some View {
-        Circle()
-            .fill(HE.volt.opacity(1.0 - phase * 0.85))
-            .frame(width: 15, height: 15)
-            .shadow(color: HE.volt.opacity(0.6 * (1 - phase)), radius: 5)
+}
+
+/// Beat-locked kick circle: stats frames arrive at 5 Hz, so the phase is
+/// extrapolated from the last frame's beat_phase + bpm and animated at
+/// display rate. Flashes on every predicted beat - a live readout of the
+/// tempo tracker (frozen dot = no beat lock).
+struct BeatPulse: View {
+    var bpm: Double
+    var phase: Double
+    var anchor: Date
+
+    var body: some View {
+        TimelineView(.animation) { ctx in
+            let beatsPerSec = max(bpm, 1) / 60.0
+            let p = (phase + ctx.date.timeIntervalSince(anchor) * beatsPerSec)
+                .truncatingRemainder(dividingBy: 1.0)
+            let k = bpm > 0 ? exp(-5.0 * p) : 0.0   // sharp hit, fast decay
+            Circle()
+                .fill(HE.volt.opacity(0.2 + 0.8 * k))
+                .frame(width: 13 + 12 * k, height: 13 + 12 * k)
+                .shadow(color: HE.volt.opacity(0.7 * k), radius: 4 + 6 * k)
+                .frame(width: 26, height: 26)   // fixed slot, no header jitter
+        }
     }
 }
 

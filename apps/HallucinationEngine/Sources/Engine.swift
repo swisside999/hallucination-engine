@@ -8,6 +8,7 @@ import SwiftUI
 @MainActor
 final class Engine: ObservableObject {
     @Published var stats: Stats?
+    var statsAt = Date.distantPast   // arrival time of the last stats frame, anchors the beat pulse
     @Published var scenes: [String] = []
     @Published var weights: [Double] = []
     @Published var running = false
@@ -257,7 +258,7 @@ final class Engine: ObservableObject {
         } else if type == "stats" {
             let dec = JSONDecoder()
             dec.keyDecodingStrategy = .convertFromSnakeCase
-            if let s = try? dec.decode(Stats.self, from: line) { stats = s }
+            if let s = try? dec.decode(Stats.self, from: line) { stats = s; statsAt = Date() }
             applyLogoSchedule()
         }
     }
